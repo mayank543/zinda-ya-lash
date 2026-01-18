@@ -21,6 +21,7 @@ import {
     Wrench,
     Users,
     Share2,
+    PanelTop
 } from "lucide-react"
 
 import {
@@ -111,6 +112,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     <Link href="/incidents">
                                         <ShieldAlert className="h-4 w-4" />
                                         <span>Incidents</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild>
+                                    <Link href="/status-pages">
+                                        <PanelTop className="h-4 w-4" />
+                                        <span>Status pages</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>

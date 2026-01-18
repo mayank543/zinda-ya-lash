@@ -93,7 +93,7 @@ export function MonitorDetailsView({ id }: { id: string }) {
                         {monitor.status === 'paused' ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
                         {monitor.status === 'paused' ? 'Resume' : 'Pause'}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => onOpen(monitor)}>
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/monitors/${monitor.id}/edit`)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit
                     </Button>
                 </div>

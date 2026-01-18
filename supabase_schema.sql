@@ -48,3 +48,28 @@ create table public.incidents (
 create index incidents_monitor_id_idx on public.incidents(monitor_id);
 alter table public.incidents enable row level security;
 create policy "Public incidents access" on public.incidents for all using (true);
+
+-- Create status_pages table
+create table public.status_pages (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  slug text unique not null,
+  domain text,
+  status text default 'published' check (status in ('published', 'draft', 'private')),
+  password_enabled boolean default false,
+  -- Appearance settings
+  logo_url text,
+  favicon_url text,
+  font text default 'Inter',
+  show_groups boolean default true,
+  layout_density text default 'wide' check (layout_density in ('wide', 'compact')),
+  layout_alignment text default 'left' check (layout_alignment in ('center', 'left')),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Seed a default status page
+insert into public.status_pages (name, slug)
+values ('Status page', 'default-status-page');
+
+alter table public.status_pages enable row level security;
+create policy "Public status_pages access" on public.status_pages for all using (true);

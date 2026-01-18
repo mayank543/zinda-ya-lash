@@ -272,10 +272,7 @@ export function MonitorList() {
                                             <DropdownMenuItem onClick={() => window.open(monitor.url, '_blank')}>
                                                 <ExternalLink className="mr-2 h-4 w-4" /> Visit URL
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => {
-                                                // @ts-ignore
-                                                onOpen(monitor)
-                                            }}>
+                                            <DropdownMenuItem onClick={() => router.push(`/monitors/${monitor.id}/edit`)}>
                                                 <Edit className="mr-2 h-4 w-4" /> Edit
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
