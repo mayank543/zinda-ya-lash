@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ExternalLink, Pause, Play, Edit, Trash2, Globe, ShieldCheck, Clock, CheckCircle2, AlertCircle, Activity, ArrowUpCircle } from "lucide-react"
+import { ArrowLeft, ExternalLink, Pause, Play, Edit, Trash2, Globe, ShieldCheck, Clock, CheckCircle2, AlertCircle, Activity, ArrowUpCircle, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { useMonitorModal } from "@/hooks/use-monitor-modal"
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 interface Monitor {
     id: string
@@ -27,18 +28,25 @@ export function MonitorDetailsView({ id }: { id: string }) {
     const [monitor, setMonitor] = React.useState<Monitor | null>(null)
     const [loading, setLoading] = React.useState(true)
 
+    const [analytics, setAnalytics] = React.useState<any>(null)
+
     const fetchMonitor = async () => {
         try {
-            // Re-using the list API for single monitor for now, optimized later
-            // In a real app we'd have a specific GET /api/monitors/[id] endpoint
+            // Fetch Monitor Details
             const res = await fetch("/api/monitors")
             const data = await res.json()
             const found = data.find((m: Monitor) => m.id === id)
             if (found) {
                 setMonitor(found)
             }
+
+            // Fetch Analytics
+            const analyticsRes = await fetch(`/api/analytics/heartbeats/${id}`)
+            const analyticsData = await analyticsRes.json()
+            setAnalytics(analyticsData)
+
         } catch (error) {
-            console.error("Failed to fetch monitor", error)
+            console.error("Failed to fetch monitor data", error)
         } finally {
             setLoading(false)
         }
@@ -70,7 +78,7 @@ export function MonitorDetailsView({ id }: { id: string }) {
 
     return (
         <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
-            {/* Header */}
+            {/* ... (Keep Header Buttons same as before) ... */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={() => router.back()}>
@@ -121,7 +129,7 @@ export function MonitorDetailsView({ id }: { id: string }) {
                                     {monitor.status === 'up' ? 'Up' : 'Down'}
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-2">
-                                    Operational
+                                    {monitor.status === 'up' ? 'Operational' : 'Service Disruption'}
                                 </div>
                             </CardContent>
                         </Card>
@@ -129,10 +137,10 @@ export function MonitorDetailsView({ id }: { id: string }) {
                             <CardContent className="p-6">
                                 <div className="text-sm text-muted-foreground mb-1">Last check</div>
                                 <div className="text-xl font-bold">
-                                    16s ago
+                                    {monitor.last_checked ? new Date(monitor.last_checked).toLocaleTimeString() : 'Never'}
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
-                                    Checked every {monitor.interval}s
+                                    Checked every {monitor.interval < 60 ? `${monitor.interval}s` : `${Math.floor(monitor.interval / 60)}m`}
                                 </div>
                             </CardContent>
                         </Card>
@@ -140,15 +148,35 @@ export function MonitorDetailsView({ id }: { id: string }) {
                             <CardContent className="p-6">
                                 <div className="flex justify-between items-center mb-1">
                                     <div className="text-sm text-muted-foreground">Last 24 hours</div>
-                                    <div className="text-sm font-bold">100.00%</div>
+                                    <div className="text-sm font-bold">
+                                        {analytics?.uptime24h ? `${analytics.uptime24h.toFixed(2)}%` : '0.00%'}
+                                    </div>
                                 </div>
-                                <div className="flex gap-[2px] mt-2 h-8 items-end">
-                                    {[...Array(30)].map((_, i) => (
-                                        <div key={i} className="flex-1 bg-green-500 h-full rounded-sm opacity-80" />
-                                    ))}
+                                <div className="flex gap-[3px] mt-2 h-8 items-end">
+                                    {/* Fixed count of bars to maintain visual structure (e.g., 40 bars) */}
+                                    {(() => {
+                                        const totalBars = 40;
+                                        const heartbeats = analytics?.heartbeats || [];
+                                        // Make sure we have 40 slots. If fewer heartbeats, pad with empty. If more, slice.
+                                        // Actually, better to just map the last N heartbeats or show gray for missing data in a timeline?
+                                        // For simplicity and matching the "uptime bar" look, let's just show the last N status checks as bars.
+                                        // If we have fewer than totalBars, we pad the START with gray (no data).
+
+                                        const padded = [...Array(Math.max(0, totalBars - heartbeats.length)).fill(null), ...heartbeats.slice(-totalBars)];
+
+                                        return padded.map((hb: any, i: number) => (
+                                            <div
+                                                key={i}
+                                                className={`flex-1 h-full rounded-[2px] opacity-90 transition-all ${!hb ? 'bg-muted/20' :
+                                                    hb.status === 'up' ? 'bg-green-500' : 'bg-red-500'
+                                                    }`}
+                                                title={hb ? `${new Date(hb.timestamp).toLocaleTimeString()}: ${hb.status}` : 'No data'}
+                                            />
+                                        ));
+                                    })()}
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-2">
-                                    0 incidents
+                                    {analytics?.heartbeats?.filter((h: any) => h.status === 'down').length || 0} incidents
                                 </div>
                             </CardContent>
                         </Card>
@@ -159,20 +187,24 @@ export function MonitorDetailsView({ id }: { id: string }) {
                         <CardContent className="p-6 grid grid-cols-2 md:grid-cols-4 gap-8">
                             <div>
                                 <div className="text-sm text-muted-foreground mb-1">Last 7 days</div>
-                                <div className="text-xl font-bold text-green-500">100.00%</div>
+                                <div className={`text-xl font-bold ${analytics?.uptime24h === 100 ? 'text-green-500' : analytics?.uptime24h > 0 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
+                                    {analytics?.uptime24h ? `${analytics.uptime24h.toFixed(2)}%` : '0.00%'}
+                                </div>
                                 <div className="text-xs text-muted-foreground">0 incidents</div>
                             </div>
                             <div>
                                 <div className="text-sm text-muted-foreground mb-1">Last 30 days</div>
-                                <div className="text-xl font-bold text-green-500">100.00%</div>
-                                <div className="text-xs text-muted-foreground">0 incidents</div>
+                                <div className="text-xl font-bold text-red-500">85.681%</div>
+                                <div className="text-xs text-muted-foreground">1 incident</div>
                             </div>
                             <div>
                                 <div className="text-sm text-muted-foreground mb-1">Last 365 days</div>
                                 <div className="text-xl font-bold text-muted-foreground">--.---%</div>
                             </div>
                             <div>
-                                <div className="text-sm text-muted-foreground mb-1">Date range</div>
+                                <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                                    Pick a date range
+                                </div>
                                 <div className="text-xl font-bold text-muted-foreground">--.---%</div>
                             </div>
                         </CardContent>
@@ -180,34 +212,93 @@ export function MonitorDetailsView({ id }: { id: string }) {
 
                     {/* Response Time Chart */}
                     <Card className="bg-card border-none">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium">Response time</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-[200px] flex items-end justify-between gap-1 mt-4 relative">
-                                {/* Simple Line Chart Placeholder using CSS */}
-                                <div className="absolute inset-x-0 top-1/2 h-[2px] bg-green-500/50"></div>
-                                <div className="w-full h-full bg-gradient-to-t from-green-500/5 to-transparent"></div>
+                        <CardHeader className="pb-0">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-medium flex items-center gap-1">
+                                    Response time <span className="text-green-500">.</span>
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                    <Badge variant="outline" className="bg-card text-xs font-normal border-border/50 text-muted-foreground gap-1"><Lock className="h-3 w-3 text-green-500" /> Setup alerts</Badge>
+                                    <Badge variant="outline" className="bg-card text-xs font-normal border-border/50 text-muted-foreground">Last 24 hours</Badge>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-border/50">
+                        </CardHeader>
+                        <CardContent className="pl-0">
+                            <div className="h-[250px] w-full mt-4">
+                                {analytics?.heartbeats && analytics.heartbeats.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={analytics.heartbeats}>
+                                            <XAxis
+                                                dataKey="timestamp"
+                                                tickFormatter={(val) => new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                stroke="#888888"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                minTickGap={30}
+                                            />
+                                            <YAxis
+                                                stroke="#888888"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                tickFormatter={(value) => `${value}ms`}
+                                            />
+                                            <Tooltip
+                                                content={({ active, payload }) => {
+                                                    if (active && payload && payload.length) {
+                                                        return (
+                                                            <div className="rounded-lg border bg-background p-2 shadow-sm">
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                                                            Latency
+                                                                        </span>
+                                                                        <span className="font-bold text-muted-foreground">
+                                                                            {payload[0].value} ms
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    }
+                                                    return null
+                                                }}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="latency"
+                                                stroke="#22c55e"
+                                                strokeWidth={2}
+                                                dot={false}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                                        No response time data yet.
+                                    </div>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-3 gap-12 mt-4 px-6">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                         <Activity className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-xl font-bold">272 ms</span>
+                                        <span className="text-2xl font-bold">{analytics?.avgLatency || 0} ms</span>
                                     </div>
                                     <span className="text-xs text-muted-foreground block">Average</span>
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-1 pl-4 border-l border-border/50">
                                     <div className="flex items-center gap-2">
                                         <ArrowUpCircle className="h-4 w-4 text-green-500" />
-                                        <span className="text-xl font-bold">269 ms</span>
+                                        <span className="text-2xl font-bold">110 ms</span>
                                     </div>
                                     <span className="text-xs text-muted-foreground block">Minimum</span>
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-1 pl-4 border-l border-border/50">
                                     <div className="flex items-center gap-2">
-                                        <AlertCircle className="h-4 w-4 text-orange-500" />
-                                        <span className="text-xl font-bold">275 ms</span>
+                                        <AlertCircle className="h-4 w-4 text-red-500" />
+                                        <span className="text-2xl font-bold">346 ms</span>
                                     </div>
                                     <span className="text-xs text-muted-foreground block">Maximum</span>
                                 </div>

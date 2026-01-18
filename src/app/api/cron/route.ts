@@ -70,7 +70,53 @@ export async function GET() {
                     latency: latency,
                 })
 
-                // B. Update Monitor Status
+                // B. Detect Status Change & Manage Incidents
+                if (monitor.status !== status) {
+                    // Status has changed
+                    if (status === 'down') {
+                        // Monitor went DOWN -> Create Incident
+                        await supabase.from('incidents').insert({
+                            monitor_id: monitor.id,
+                            status: 'ongoing',
+                            root_cause: responseStatus > 0 ? `${responseStatus} Error` : 'Connection Failed',
+                            started_at: new Date().toISOString()
+                        })
+                    } else if (status === 'up' && monitor.status === 'down') {
+                        // Monitor came UP -> Resolve open incident
+                        // Find the latest ongoing incident
+                        const { data: ongoingIncidents } = await supabase
+                            .from('incidents')
+                            .select('id, started_at')
+                            .eq('monitor_id', monitor.id)
+                            .eq('status', 'ongoing')
+                            .order('started_at', { ascending: false })
+                            .limit(1)
+
+                        if (ongoingIncidents && ongoingIncidents.length > 0) {
+                            const incident = ongoingIncidents[0]
+                            const resolvedAt = new Date()
+                            const startedAt = new Date(incident.started_at)
+
+                            // Calculate simple duration string
+                            const diffMs = resolvedAt.getTime() - startedAt.getTime()
+                            const diffMins = Math.round(diffMs / 60000)
+                            const hrs = Math.floor(diffMins / 60)
+                            const mins = diffMins % 60
+                            const durationStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`
+
+                            await supabase
+                                .from('incidents')
+                                .update({
+                                    status: 'Resolved',
+                                    resolved_at: resolvedAt.toISOString(),
+                                    duration: durationStr
+                                })
+                                .eq('id', incident.id)
+                        }
+                    }
+                }
+
+                // C. Update Monitor Status
                 await supabase
                     .from('monitors')
                     .update({

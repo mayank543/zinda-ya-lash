@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
     Activity,
     AlertCircle,
@@ -74,11 +75,7 @@ const monitors = [
         color: "text-gray-400",
     },
 ]
-import { useMonitorModal } from "@/hooks/use-monitor-modal"
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-    const { onOpen } = useMonitorModal()
-
     return (
         <Sidebar {...props}>
             <SidebarHeader className="h-16 border-b border-border/50 px-4 flex items-center justify-center">
@@ -89,9 +86,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarHeader>
 
             <div className="p-4 pb-0">
-                <Button onClick={onOpen} className="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white font-medium" size="lg">
-                    <Plus className="h-4 w-4" />
-                    Add New Monitor
+                <Button asChild className="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white font-medium" size="lg">
+                    <Link href="/monitors/add">
+                        <Plus className="h-4 w-4" />
+                        Add New Monitor
+                    </Link>
                 </Button>
             </div>
 
@@ -100,15 +99,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             <SidebarMenuItem>
-                                <SidebarMenuButton isActive>
-                                    <Activity className="h-4 w-4" />
-                                    <span>Monitoring</span>
+                                <SidebarMenuButton asChild isActive>
+                                    <Link href="/">
+                                        <Activity className="h-4 w-4" />
+                                        <span>Monitoring</span>
+                                    </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton>
-                                    <ShieldAlert className="h-4 w-4" />
-                                    <span>Incidents</span>
+                                <SidebarMenuButton asChild>
+                                    <Link href="/incidents">
+                                        <ShieldAlert className="h-4 w-4" />
+                                        <span>Incidents</span>
+                                    </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>

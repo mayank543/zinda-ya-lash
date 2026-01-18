@@ -1,42 +1,68 @@
 "use client"
 
+import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 
-const data = [
-    { time: "00:00", ms: 120 },
-    { time: "01:00", ms: 132 },
-    { time: "02:00", ms: 101 },
-    { time: "03:00", ms: 154 },
-    { time: "04:00", ms: 142 },
-    { time: "05:00", ms: 128 },
-    { time: "06:00", ms: 135 },
-    { time: "07:00", ms: 160 },
-    { time: "08:00", ms: 210 },
-    { time: "09:00", ms: 195 },
-    { time: "10:00", ms: 145 },
-    { time: "11:00", ms: 130 },
-    { time: "12:00", ms: 125 },
-    { time: "13:00", ms: 140 },
-    { time: "14:00", ms: 142 },
-    { time: "15:00", ms: 138 },
-    { time: "16:00", ms: 145 },
-    { time: "17:00", ms: 155 },
-    { time: "18:00", ms: 160 },
-    { time: "19:00", ms: 175 },
-    { time: "20:00", ms: 165 },
-    { time: "21:00", ms: 150 },
-    { time: "22:00", ms: 130 },
-    { time: "23:00", ms: 125 },
-]
-
 export function ResponseTimeChart() {
+    const [data, setData] = React.useState<any[]>([])
+    const [loading, setLoading] = React.useState(true)
+
+    React.useEffect(() => {
+        async function fetchData() {
+            try {
+                const res = await fetch("/api/analytics/heartbeats")
+                const json = await res.json()
+                if (json.chart && json.chart.length > 0) {
+                    setData(json.chart)
+                } else {
+                    // Keep mock data or empty state if no real data yet? 
+                    // Let's show empty if no data to prove it's "real"
+                    setData([])
+                }
+            } catch (e) {
+                console.error(e)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [])
+
+    if (loading) return (
+        <Card className="col-span-3">
+            <CardHeader>
+                <CardTitle>Avg. Response Time</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px] flex items-center justify-center">
+                <p className="text-muted-foreground">Loading real data...</p>
+            </CardContent>
+        </Card>
+    )
+
+    if (data.length === 0) return (
+        <Card className="col-span-3">
+            <CardHeader>
+                <CardTitle>Avg. Response Time</CardTitle>
+                <CardDescription>
+                    Real-time data from your monitors.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[300px] flex items-center justify-center border-t">
+                <div className="text-center">
+                    <p className="text-muted-foreground mb-2">No heartbeat data recorded yet.</p>
+                    <p className="text-xs text-muted-foreground">Make sure your cron job is running or wait for the next check.</p>
+                </div>
+            </CardContent>
+        </Card>
+    )
+
     return (
         <Card className="col-span-3">
             <CardHeader>
                 <CardTitle>Avg. Response Time</CardTitle>
                 <CardDescription>
-                    Average response time (ms) over the last 24 hours.
+                    Average response time (ms) over the last 24 hours (Real Data).
                 </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">

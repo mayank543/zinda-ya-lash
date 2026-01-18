@@ -257,7 +257,7 @@ export function MonitorList() {
                                     {monitor.last_checked ? new Date(monitor.last_checked).toLocaleString() : "Pending"}
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell text-right text-muted-foreground text-sm">
-                                    {monitor.interval}s
+                                    {monitor.interval < 60 ? `${monitor.interval}s` : `${Math.floor(monitor.interval / 60)}m`}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <DropdownMenu>
