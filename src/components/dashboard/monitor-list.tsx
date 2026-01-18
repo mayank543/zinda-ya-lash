@@ -239,7 +239,12 @@ export function MonitorList() {
                                 </TableCell>
                                 <TableCell className="font-medium">
                                     <div className="flex flex-col">
-                                        <span>{monitor.name}</span>
+                                        <div
+                                            onClick={() => router.push(`/monitors/${monitor.id}`)}
+                                            className="font-medium hover:underline cursor-pointer"
+                                        >
+                                            {monitor.name}
+                                        </div>
                                         <a href={monitor.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground flex items-center hover:underline truncate max-w-[200px]">
                                             {monitor.url} <ExternalLink className="h-3 w-3 ml-1" />
                                         </a>

@@ -15,6 +15,11 @@ import {
     Plus,
     Search,
     Settings,
+    ShieldAlert,
+    Radio,
+    Wrench,
+    Users,
+    Share2,
 } from "lucide-react"
 
 import {
@@ -91,74 +96,43 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </div>
 
             <SidebarContent>
-                {/* Main Navigation */}
                 <SidebarGroup>
                     <SidebarGroupContent>
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton isActive>
-                                    <LayoutDashboard className="h-4 w-4" />
-                                    <span>Dashboard</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                <SidebarSeparator />
-
-                {/* Monitors Group */}
-                <SidebarGroup>
-                    <div className="px-2 mb-2">
-                        <div className="relative">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Search monitors..." className="pl-8 h-9 bg-background/50" />
-                        </div>
-                    </div>
-                    <SidebarGroupLabel>Monitors</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {monitors.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild tooltip={item.title}>
-                                        <a href={item.url} className="flex justify-between w-full">
-                                            <div className="flex items-center gap-2">
-                                                <item.icon className={`h-4 w-4 ${item.color || ""}`} />
-                                                <span>{item.title}</span>
-                                            </div>
-                                            <span className="text-xs font-medium text-muted-foreground px-2 py-0.5 rounded-full bg-muted">
-                                                {item.count}
-                                            </span>
-                                        </a>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                <SidebarSeparator />
-
-                {/* Other Sections */}
-                <SidebarGroup>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton>
-                                    <Globe className="h-4 w-4" />
-                                    <span>Status Pages</span>
+                                    <Activity className="h-4 w-4" />
+                                    <span>Monitoring</span>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton>
-                                    <Calendar className="h-4 w-4" />
-                                    <span>Maintenance Windows</span>
+                                    <ShieldAlert className="h-4 w-4" />
+                                    <span>Incidents</span>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton>
-                                    <Settings className="h-4 w-4" />
-                                    <span>Settings</span>
+                                    <Radio className="h-4 w-4" />
+                                    <span>Status pages</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton>
+                                    <Wrench className="h-4 w-4" />
+                                    <span>Maintenance</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton>
+                                    <Users className="h-4 w-4" />
+                                    <span>Team members</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton>
+                                    <Share2 className="h-4 w-4" />
+                                    <span>Integrations & API</span>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                         </SidebarMenu>
