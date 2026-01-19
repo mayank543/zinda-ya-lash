@@ -21,6 +21,7 @@ export default function EditStatusPage() {
     const [page, setPage] = React.useState<any>(null)
     const [name, setName] = React.useState("")
     const [homepageUrl, setHomepageUrl] = React.useState("")
+    const [saving, setSaving] = React.useState(false)
 
     React.useEffect(() => {
         async function fetchPage() {
@@ -46,32 +47,31 @@ export default function EditStatusPage() {
         fetchPage()
     }, [id])
 
-    return (
-        <div className="flex h-screen bg-background">
-            {/* Sidebar Settings Menu */}
-            <div className="w-64 border-r border-border/40 bg-card hidden lg:block p-4 space-y-2">
-                <Link href="/status-pages" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-8">
-                    <ArrowLeft className="h-4 w-4" /> Back to Status Pages
-                </Link>
+    const handleSave = async () => {
+        setSaving(true)
+        try {
+            const { error } = await supabase
+                .from('status_pages')
+                .update({
+                    name,
+                    domain: homepageUrl
+                })
+                .eq('id', id)
 
-                <div className="space-y-1">
-                    <Button variant="ghost" className="w-full justify-start gap-3 bg-muted/50">
-                        <Settings className="h-4 w-4" /> Global Settings
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                        <Palette className="h-4 w-4" /> Appearance
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                        <LayoutDashboard className="h-4 w-4" /> Monitors
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                        <Megaphone className="h-4 w-4" /> Announcements
-                    </Button>
-                </div>
-            </div>
+            if (error) throw error
+            toast.success("Settings saved successfully")
+        } catch (error) {
+            toast.error("Failed to save settings")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <div className="flex h-screen bg-background overflow-hidden relative">
 
             {/* Main Content */}
-            <div className="flex-1 overflow-auto bg-background">
+            <div className="flex-1 overflow-auto bg-background pb-20">
                 <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto w-full">
 
                     {/* Header */}
@@ -83,7 +83,7 @@ export default function EditStatusPage() {
                             <h1 className="text-2xl font-bold tracking-tight">Edit <span className="text-green-500">{page?.name || 'Status page'}</span> status page.</h1>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                            Public status page, hosted on <a href="#" className="text-green-500 hover:underline">stats.uptimerobot.com/{page?.slug || '...'}</a>
+                            Public status page, hosted on <Link href={`/status/${page?.slug}`} target="_blank" className="text-green-500 hover:underline">stats.uptimerobot.com/{page?.slug || '...'}</Link>
                         </div>
                     </div>
 
@@ -203,6 +203,39 @@ export default function EditStatusPage() {
                     </Card>
 
                 </div>
+            </div>
+
+            {/* Right Sidebar */}
+            <div className="w-64 border-l border-border/40 bg-card hidden lg:block p-4 space-y-2">
+                <Link href="/status-pages" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-8">
+                    <ArrowLeft className="h-4 w-4" /> Back to Status Pages
+                </Link>
+
+                <div className="space-y-1">
+                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+                        <LayoutDashboard className="h-4 w-4" /> Monitors
+                    </Button>
+                    <Link href={`/status-pages/${id}/edit/appearance`}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+                            <Palette className="h-4 w-4" /> Appearance
+                        </Button>
+                    </Link>
+                    <Link href={`/status-pages/${id}/edit`}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 bg-muted/50 text-foreground">
+                            <Settings className="h-4 w-4" /> Global Settings
+                        </Button>
+                    </Link>
+                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+                        <Megaphone className="h-4 w-4" /> Announcements
+                    </Button>
+                </div>
+            </div>
+
+            {/* Fixed Bottom Bar */}
+            <div className="fixed bottom-0 left-0 lg:right-64 right-0 lg:left-0 p-4 bg-card border-t border-border flex justify-end z-10 w-full lg:w-[calc(100%-16rem)]">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto" onClick={handleSave} disabled={saving}>
+                    {saving ? "Saving..." : "Save changes"}
+                </Button>
             </div>
         </div>
     )

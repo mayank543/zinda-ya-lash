@@ -309,7 +309,6 @@ export default function AddMonitorPage() {
                                     min={0}
                                     max={sliderSteps.length - 1}
                                     step={1}
-                                    defaultValue={sliderSteps.findIndex(s => s.value === 300)}
                                     value={sliderSteps.findIndex(s => s.value === interval)}
                                     onChange={(e) => {
                                         const index = parseInt(e.target.value)

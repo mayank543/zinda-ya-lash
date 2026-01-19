@@ -8,22 +8,33 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Upload, Lock, LayoutDashboard, Settings, Megaphone, Palette, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, Upload, Lock, LayoutDashboard, Settings, Megaphone, Palette, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
-import { useParams } from "next/navigation"
+import { toast } from "sonner"
+import { useParams, useRouter } from "next/navigation"
 
 export default function StatusPageAppearance() {
     const params = useParams()
     const id = params.id as string
+    const router = useRouter()
 
     // State
     const [page, setPage] = React.useState<any>(null)
     const [loading, setLoading] = React.useState(true)
+    const [saving, setSaving] = React.useState(false)
+
+    // Form fields
     const [font, setFont] = React.useState("Roboto")
     const [showGroups, setShowGroups] = React.useState(false)
     const [density, setDensity] = React.useState("wide")
     const [alignment, setAlignment] = React.useState("left")
+    const [logoUrl, setLogoUrl] = React.useState("")
+    const [faviconUrl, setFaviconUrl] = React.useState("")
+
+    // Refs for file inputs
+    const logoInputRef = React.useRef<HTMLInputElement>(null)
+    const faviconInputRef = React.useRef<HTMLInputElement>(null)
 
     React.useEffect(() => {
         async function fetchPage() {
@@ -36,6 +47,8 @@ export default function StatusPageAppearance() {
                     setShowGroups(data.show_groups || false)
                     setDensity(data.layout_density || "wide")
                     setAlignment(data.layout_alignment || "left")
+                    setLogoUrl(data.logo_url || "")
+                    setFaviconUrl(data.favicon_url || "")
                 }
             } catch (e) {
                 console.error(e)
@@ -46,37 +59,77 @@ export default function StatusPageAppearance() {
         fetchPage()
     }, [id])
 
+    const handleSave = async () => {
+        setSaving(true)
+        try {
+            const { error } = await supabase
+                .from('status_pages')
+                .update({
+                    font,
+                    show_groups: showGroups,
+                    layout_density: density,
+                    layout_alignment: alignment,
+                    logo_url: logoUrl,
+                    favicon_url: faviconUrl
+                })
+                .eq('id', id)
+
+            if (error) throw error
+            toast.success("Appearance settings saved successfully")
+            router.refresh()
+        } catch (error) {
+            console.error(error)
+            toast.error("Failed to save changes")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon') => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        // For this demo, since we might not have storage permissions fully configured in the user's Supabase instance
+        // specifically for public uploads without auth, we will try to upload, but fallback to object URL for immediate feedback.
+
+        // 1. Immediate Preview
+        const objectUrl = URL.createObjectURL(file)
+        if (type === 'logo') setLogoUrl(objectUrl)
+        else setFaviconUrl(objectUrl)
+
+        // 2. Real Upload (Try/Catch)
+        try {
+            const fileExt = file.name.split('.').pop()
+            const fileName = `${id}-${type}-${Math.random()}.${fileExt}`
+            const filePath = `${fileName}`
+
+            // Try 'public' bucket first, simpler
+            const { error: uploadError } = await supabase.storage
+                .from('public')
+                .upload(filePath, file)
+
+            if (uploadError) {
+                // Try creating bucket if possible? No, can't from client usually.
+                // Fallback: If upload fails (likely 403 or bucket missing), we stick with the ObjectURL 
+                // BUT warn user it won't persist.
+                console.warn("Storage upload failed, using local preview.", uploadError)
+                toast.warning("Could not upload to cloud storage. Changes may not persist after reload.")
+            } else {
+                const { data: { publicUrl } } = supabase.storage.from('public').getPublicUrl(filePath)
+                if (type === 'logo') setLogoUrl(publicUrl)
+                else setFaviconUrl(publicUrl)
+            }
+        } catch (e) {
+            console.error("Upload logic error", e)
+        }
+    }
+
     return (
-        <div className="flex h-screen bg-background">
-            {/* Sidebar (Shared Navigation - duplicating for now, ideally moved to layout) */}
-            <div className="w-64 border-r border-border/40 bg-card hidden lg:block p-4 space-y-2">
-                <Link href="/status-pages" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-8">
-                    <ArrowLeft className="h-4 w-4" /> Back to Status Pages
-                </Link>
+        <div className="flex h-screen bg-background overflow-hidden relative">
 
-                <div className="space-y-1">
-                    <Link href={`/status-pages/${id}/edit`}>
-                        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                            <Settings className="h-4 w-4" /> Global Settings
-                        </Button>
-                    </Link>
-                    <Link href={`/status-pages/${id}/edit/appearance`}>
-                        <Button variant="ghost" className="w-full justify-start gap-3 bg-muted/50 text-foreground">
-                            <Palette className="h-4 w-4" /> Appearance
-                        </Button>
-                    </Link>
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                        <LayoutDashboard className="h-4 w-4" /> Monitors
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                        <Megaphone className="h-4 w-4" /> Announcements
-                    </Button>
-                </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="flex-1 overflow-auto bg-background">
-                <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto w-full pb-20">
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-auto bg-background pb-20">
+                <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto w-full">
 
                     {/* Header */}
                     <div className="flex flex-col gap-1">
@@ -87,7 +140,7 @@ export default function StatusPageAppearance() {
                             <h1 className="text-2xl font-bold tracking-tight">Edit <span className="text-green-500">{page?.name || 'Status page'}</span> status page.</h1>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                            Public status page, hosted on <a href="#" className="text-green-500 hover:underline">stats.uptimerobot.com/{page?.slug || '...'}</a>
+                            Public status page, hosted on <Link href={`/status/${page?.slug}`} target="_blank" className="text-green-500 hover:underline">stats.uptimerobot.com/{page?.slug || '...'}</Link>
                         </div>
                     </div>
 
@@ -102,18 +155,72 @@ export default function StatusPageAppearance() {
                                 <div className="space-y-2">
                                     <Label>Logo</Label>
                                     <div className="text-xs text-muted-foreground">Accepted formats: .jpg, .jpeg, .png. Max 400x200px, 150kb.</div>
-                                    <div className="border border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center text-center hover:bg-muted/10 cursor-pointer transition-colors">
-                                        <Upload className="h-6 w-6 text-muted-foreground mb-2" />
-                                        <div className="text-sm text-muted-foreground">Drag & drop your logo here or choose by click</div>
+                                    <div
+                                        className="border border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center text-center hover:bg-muted/10 cursor-pointer transition-colors relative overflow-hidden group"
+                                        onClick={() => logoInputRef.current?.click()}
+                                    >
+                                        <input
+                                            ref={logoInputRef}
+                                            type="file"
+                                            accept=".jpg,.jpeg,.png"
+                                            className="hidden"
+                                            onChange={(e) => handleFileUpload(e, 'logo')}
+                                        />
+                                        {logoUrl ? (
+                                            <div className="relative w-full h-full flex flex-col items-center">
+                                                <img src={logoUrl} alt="Logo" className="h-16 object-contain mb-2" />
+                                                <div className="text-xs text-muted-foreground group-hover:block hidden absolute inset-0 bg-background/80 flex items-center justify-center">Click to change</div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute top-[-20px] right-[-20px] h-6 w-6 rounded-full bg-destructive text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={(e) => { e.stopPropagation(); setLogoUrl(""); }}
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                                                <div className="text-sm text-muted-foreground">Drag & drop your logo here or choose by click</div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 {/* Favicon Upload */}
                                 <div className="space-y-2">
                                     <Label>Favicon</Label>
                                     <div className="text-xs text-muted-foreground">Accepted formats: .png, .gif, .ico. Max 96x96px, 150kb.</div>
-                                    <div className="border border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center text-center hover:bg-muted/10 cursor-pointer transition-colors">
-                                        <Upload className="h-6 w-6 text-muted-foreground mb-2" />
-                                        <div className="text-sm text-muted-foreground">Drag & drop your favicon here or choose by click</div>
+                                    <div
+                                        className="border border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center text-center hover:bg-muted/10 cursor-pointer transition-colors relative group"
+                                        onClick={() => faviconInputRef.current?.click()}
+                                    >
+                                        <input
+                                            ref={faviconInputRef}
+                                            type="file"
+                                            accept=".png,.gif,.ico"
+                                            className="hidden"
+                                            onChange={(e) => handleFileUpload(e, 'favicon')}
+                                        />
+                                        {faviconUrl ? (
+                                            <div className="relative w-full h-full flex flex-col items-center">
+                                                <img src={faviconUrl} alt="Favicon" className="h-8 w-8 object-contain mb-2" />
+                                                <div className="text-xs text-muted-foreground group-hover:block hidden absolute inset-0 bg-background/80 flex items-center justify-center">Click to change</div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute top-[-20px] right-[-20px] h-6 w-6 rounded-full bg-destructive text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={(e) => { e.stopPropagation(); setFaviconUrl(""); }}
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                                                <div className="text-sm text-muted-foreground">Drag & drop your favicon here or choose by click</div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -248,10 +355,36 @@ export default function StatusPageAppearance() {
                 </div>
             </div>
 
+            {/* Right Sidebar */}
+            <div className="w-64 border-l border-border/40 bg-card hidden lg:block p-4 space-y-2">
+                <Link href="/status-pages" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-8">
+                    <ArrowLeft className="h-4 w-4" /> Back to Status Pages
+                </Link>
+
+                <div className="space-y-1">
+                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+                        <LayoutDashboard className="h-4 w-4" /> Monitors
+                    </Button>
+                    <Link href={`/status-pages/${id}/edit/appearance`}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 bg-muted/50 text-foreground">
+                            <Palette className="h-4 w-4" /> Appearance
+                        </Button>
+                    </Link>
+                    <Link href={`/status-pages/${id}/edit`}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+                            <Settings className="h-4 w-4" /> Global Settings
+                        </Button>
+                    </Link>
+                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+                        <Megaphone className="h-4 w-4" /> Announcements
+                    </Button>
+                </div>
+            </div>
+
             {/* Fixed Bottom Bar */}
-            <div className="fixed bottom-0 left-0 lg:left-64 right-0 p-4 bg-card border-t border-border flex justify-end">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto">
-                    Save changes
+            <div className="fixed bottom-0 left-0 lg:right-64 right-0 lg:left-0 p-4 bg-card border-t border-border flex justify-end z-10 w-full lg:w-[calc(100%-16rem)]">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto" onClick={handleSave} disabled={saving}>
+                    {saving ? "Saving..." : "Save changes"}
                 </Button>
             </div>
         </div>

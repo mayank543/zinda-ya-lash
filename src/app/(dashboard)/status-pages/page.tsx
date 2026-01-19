@@ -22,27 +22,53 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
 
 export default function StatusPagesList() {
     const [pages, setPages] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
 
-    React.useEffect(() => {
-        async function fetchPages() {
-            try {
-                const { data, error } = await supabase
-                    .from('status_pages')
-                    .select('*')
+    const fetchPages = React.useCallback(async () => {
+        try {
+            setLoading(true)
+            const { data, error } = await supabase
+                .from('status_pages')
+                .select('*')
+                .order('created_at', { ascending: false })
 
-                if (data) setPages(data)
-            } catch (error) {
-                console.error("Failed to fetch status pages")
-            } finally {
-                setLoading(false)
-            }
+            if (data) setPages(data)
+        } catch (error) {
+            console.error("Failed to fetch status pages")
+        } finally {
+            setLoading(false)
         }
-        fetchPages()
     }, [])
+
+    React.useEffect(() => {
+        fetchPages()
+    }, [fetchPages])
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this status page?")) return
+
+        try {
+            const { error } = await supabase
+                .from('status_pages')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error
+
+            toast.success("Status page deleted")
+            fetchPages() // Refresh list
+        } catch (error) {
+            console.error(error)
+            toast.error("Failed to delete status page")
+        }
+    }
+
+    // Temporary: Logic to create a new one if requested by button, or just alert not implemented
+    // Or we can implement a basic create function? The user just asked to delete one.
 
     return (
         <div className="flex flex-col gap-4 p-4 md:p-8 max-w-[1600px] mx-auto w-full">
@@ -111,9 +137,16 @@ export default function StatusPagesList() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem>Edit</DropdownMenuItem>
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/status-pages/${page.id}/edit`}>Edit</Link>
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-red-500">Delete</DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        className="text-red-500 focus:text-red-600 focus:bg-red-50"
+                                                        onClick={() => handleDelete(page.id)}
+                                                    >
+                                                        Delete
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>

@@ -123,12 +123,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton>
-                                    <Radio className="h-4 w-4" />
-                                    <span>Status pages</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+
                             <SidebarMenuItem>
                                 <SidebarMenuButton>
                                     <Wrench className="h-4 w-4" />
