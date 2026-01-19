@@ -23,8 +23,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { useStatusPageModal } from "@/hooks/use-status-page-modal"
+import { CreateStatusPageModal } from "@/components/status-pages/create-status-page-modal"
 
 export default function StatusPagesList() {
+    const { onOpen } = useStatusPageModal()
     const [pages, setPages] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
 
@@ -74,7 +77,7 @@ export default function StatusPagesList() {
         <div className="flex flex-col gap-4 p-4 md:p-8 max-w-[1600px] mx-auto w-full">
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold tracking-tight">Status pages<span className="text-green-500">.</span></h1>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button onClick={() => onOpen()} className="bg-blue-600 hover:bg-blue-700 text-white">
                     Create Status page
                 </Button>
             </div>
@@ -157,6 +160,7 @@ export default function StatusPagesList() {
                     </TableBody>
                 </Table>
             </div>
+            <CreateStatusPageModal onSuccess={fetchPages} />
         </div>
     )
 }

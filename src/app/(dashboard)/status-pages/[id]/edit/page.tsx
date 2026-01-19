@@ -1,241 +1,226 @@
+
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft, ExternalLink, Lock, LayoutDashboard, Settings, Megaphone, Palette } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { supabase } from "@/lib/supabase"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
+import { ArrowLeft, ExternalLink, Save } from "lucide-react"
 import { toast } from "sonner"
-import { useParams } from "next/navigation"
+import Link from "next/link"
 
-export default function EditStatusPage() {
-    const params = useParams()
-    const id = params.id as string
-
+export default function EditStatusPage({ params }: { params: Promise<{ id: string }> }) {
+    const router = useRouter()
+    const { id } = React.use(params)
     const [loading, setLoading] = React.useState(true)
-    const [page, setPage] = React.useState<any>(null)
-    const [name, setName] = React.useState("")
-    const [homepageUrl, setHomepageUrl] = React.useState("")
     const [saving, setSaving] = React.useState(false)
 
-    React.useEffect(() => {
-        async function fetchPage() {
-            if (!id) return
-            try {
-                const { data, error } = await supabase
-                    .from('status_pages')
-                    .select('*')
-                    .eq('id', id)
-                    .single()
+    // Form State
+    const [name, setName] = React.useState("")
+    const [slug, setSlug] = React.useState("")
+    const [password, setPassword] = React.useState("")
+    const [passwordEnabled, setPasswordEnabled] = React.useState(false)
+    const [allMonitors, setAllMonitors] = React.useState<any[]>([])
+    const [selectedMonitorIds, setSelectedMonitorIds] = React.useState<string[]>([])
 
-                if (data) {
-                    setPage(data)
-                    setName(data.name)
-                    setHomepageUrl(data.domain || "")
+    React.useEffect(() => {
+        async function loadData() {
+            try {
+                // 1. Fetch available monitors
+                const monitorsRes = await fetch('/api/monitors')
+                const monitorsData = await monitorsRes.json()
+                setAllMonitors(monitorsData)
+
+                // 2. Fetch Status Page Details
+                const pageRes = await fetch(`/api/status-pages/${id}`)
+                const pageData = await pageRes.json()
+
+                if (pageData.error) throw new Error(pageData.error)
+
+                setName(pageData.name)
+                setSlug(pageData.slug)
+                setPasswordEnabled(pageData.password_enabled)
+                // If password enabled, we don't get the actual password back usually for security, 
+                // but here we just leave it blank to indicate "Unchanged".
+                // If the user types something, we update it.
+
+                // Pre-select monitors
+                if (pageData.monitorIds) {
+                    setSelectedMonitorIds(pageData.monitorIds)
                 }
+
             } catch (error) {
-                console.error("Failed to fetch status page")
+                console.error("Failed to load data", error)
+                toast.error("Failed to load status page details")
             } finally {
                 setLoading(false)
             }
         }
-        fetchPage()
+        loadData()
     }, [id])
 
     const handleSave = async () => {
         setSaving(true)
         try {
-            const { error } = await supabase
-                .from('status_pages')
-                .update({
-                    name,
-                    domain: homepageUrl
-                })
-                .eq('id', id)
+            const payload: any = {
+                name,
+                slug,
+                monitors: selectedMonitorIds,
+                password_enabled: passwordEnabled
+            }
+            // Only send password if user typed one, or if they disabled it (send empty string/null logic handled by backend mostly via enabled flag, but our API expects specific logic)
+            if (password) {
+                payload.password = password
+            } else if (!passwordEnabled) {
+                // If disabled, we might want to plain clear it or just rely on the flag?
+                // The API implementation sets password to null if provided as such, let's be explicit
+                payload.password = ""
+            }
 
-            if (error) throw error
-            toast.success("Settings saved successfully")
-        } catch (error) {
-            toast.error("Failed to save settings")
+            const res = await fetch(`/api/status-pages/${id}`, {
+                method: "PATCH",
+                body: JSON.stringify(payload),
+                headers: { "Content-Type": "application/json" }
+            })
+
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error)
+
+            toast.success("Status page updated successfully")
+            router.refresh()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to save")
         } finally {
             setSaving(false)
         }
     }
 
+    const toggleMonitor = (monitorId: string) => {
+        setSelectedMonitorIds(prev =>
+            prev.includes(monitorId)
+                ? prev.filter(id => id !== monitorId)
+                : [...prev, monitorId]
+        )
+    }
+
+    if (loading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>
+
     return (
-        <div className="flex h-screen bg-background overflow-hidden relative">
-
-            {/* Main Content */}
-            <div className="flex-1 overflow-auto bg-background pb-20">
-                <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto w-full">
-
-                    {/* Header */}
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                            <Link href="/status-pages" className="lg:hidden text-muted-foreground">
-                                <ArrowLeft className="h-4 w-4" />
-                            </Link>
-                            <h1 className="text-2xl font-bold tracking-tight">Edit <span className="text-green-500">{page?.name || 'Status page'}</span> status page.</h1>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                            Public status page, hosted on <Link href={`/status/${page?.slug}`} target="_blank" className="text-green-500 hover:underline">stats.uptimerobot.com/{page?.slug || '...'}</Link>
-                        </div>
-                    </div>
-
-                    {/* Name & Homepage */}
-                    <Card className="bg-card border-none shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="text-lg font-semibold flex items-center gap-1">Name & homepage <span className="text-green-500">.</span></CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label>Name of the status page</Label>
-                                    <div className="text-xs text-muted-foreground mb-2">E.g. your brand. It is used in status page heading, title, etc.</div>
-                                    <Input
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        className="bg-muted/50 border-0"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Homepage URL</Label>
-                                    <div className="text-xs text-muted-foreground mb-2">The link target for the logo (or main title) on status page. Usually leads to your homepage.</div>
-                                    <Input
-                                        placeholder="E.g. https://yourdomain.com"
-                                        value={homepageUrl}
-                                        onChange={(e) => setHomepageUrl(e.target.value)}
-                                        className="bg-muted/50 border-0"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* White-label */}
-                    <Card className="bg-card border-none shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="text-lg font-semibold flex items-center gap-1">White-label <span className="text-green-500">.</span></CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <div className="flex justify-between">
-                                        <Label>Custom domain</Label>
-                                        <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-500 bg-orange-500/10 gap-1">
-                                            <Lock className="h-3 w-3" /> Available only in Pro
-                                        </Badge>
-                                    </div>
-                                    <Input
-                                        placeholder="E.g. status.yourdomain.com"
-                                        disabled
-                                        className="bg-muted/50 border-0 opacity-50"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between">
-                                        <Label>Google Analytics</Label>
-                                        <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-500 bg-orange-500/10 gap-1">
-                                            <Lock className="h-3 w-3" /> Available only in Team+
-                                        </Badge>
-                                    </div>
-                                    <Input
-                                        placeholder="G-xxxxxxxxx"
-                                        disabled
-                                        className="bg-muted/50 border-0 opacity-50"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid md:grid-cols-2 gap-6 pt-2">
-                                <div className="flex items-center justify-between p-3 rounded bg-muted/20">
-                                    <div className="space-y-0.5">
-                                        <Label className="text-base">Remove UptimeRobot logo</Label>
-                                        <div className="text-xs text-muted-foreground">This will hide "Powered by UptimeRobot" link in footer.</div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-500 bg-orange-500/10 gap-1">
-                                            <Lock className="h-3 w-3" />
-                                        </Badge>
-                                        <Switch disabled />
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between p-3 rounded bg-muted/20">
-                                    <div className="space-y-0.5">
-                                        <Label className="text-base">Remove cookie consent</Label>
-                                        <div className="text-xs text-muted-foreground">Available only for a Custom Domain status page.</div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-500 bg-orange-500/10 gap-1">
-                                            <Lock className="h-3 w-3" />
-                                        </Badge>
-                                        <Switch disabled />
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Access */}
-                    <Card className="bg-card border-none shadow-sm pb-10">
-                        <CardHeader>
-                            <CardTitle className="text-lg font-semibold flex items-center gap-1">Access <span className="text-green-500">.</span></CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-between p-3 rounded bg-muted/20">
-                                <div className="space-y-0.5">
-                                    <Label className="text-base">Password</Label>
-                                    <div className="text-xs text-muted-foreground">Restrict access to people with password only.</div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-500 bg-orange-500/10 gap-1">
-                                        <Lock className="h-3 w-3" />
-                                    </Badge>
-                                    <Switch disabled />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                </div>
-            </div>
-
-            {/* Right Sidebar */}
-            <div className="w-64 border-l border-border/40 bg-card hidden lg:block p-4 space-y-2">
-                <Link href="/status-pages" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-8">
-                    <ArrowLeft className="h-4 w-4" /> Back to Status Pages
-                </Link>
-
-                <div className="space-y-1">
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                        <LayoutDashboard className="h-4 w-4" /> Monitors
-                    </Button>
-                    <Link href={`/status-pages/${id}/edit/appearance`}>
-                        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                            <Palette className="h-4 w-4" /> Appearance
-                        </Button>
-                    </Link>
-                    <Link href={`/status-pages/${id}/edit`}>
-                        <Button variant="ghost" className="w-full justify-start gap-3 bg-muted/50 text-foreground">
-                            <Settings className="h-4 w-4" /> Global Settings
-                        </Button>
-                    </Link>
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                        <Megaphone className="h-4 w-4" /> Announcements
-                    </Button>
-                </div>
-            </div>
-
-            {/* Fixed Bottom Bar */}
-            <div className="fixed bottom-0 left-0 lg:right-64 right-0 lg:left-0 p-4 bg-card border-t border-border flex justify-end z-10 w-full lg:w-[calc(100%-16rem)]">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto" onClick={handleSave} disabled={saving}>
-                    {saving ? "Saving..." : "Save changes"}
+        <div className="flex flex-col gap-6 p-6 max-w-4xl mx-auto w-full pb-20">
+            <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Back
                 </Button>
+                <h1 className="text-2xl font-bold tracking-tight">Edit Status Page</h1>
+                <div className="ml-auto flex gap-2">
+                    <Link href={`/status/${slug}`} target="_blank">
+                        <Button variant="outline">
+                            <ExternalLink className="mr-2 h-4 w-4" /> View Page
+                        </Button>
+                    </Link>
+                    <Button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700">
+                        <Save className="mr-2 h-4 w-4" /> Save Changes
+                    </Button>
+                </div>
+            </div>
+
+            <div className="grid gap-6">
+                {/* General Settings */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>General Settings</CardTitle>
+                        <CardDescription>Basic configuration for your status page.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="name">Page Name</Label>
+                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="slug">Slug (URL)</Label>
+                            <div className="flex items-center">
+                                <span className="text-sm text-muted-foreground mr-1">/status/</span>
+                                <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Password Protection */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Access Control</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <Label className="text-base">Password Protection</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Restrict access to this status page with a password.
+                                </p>
+                            </div>
+                            <Switch checked={passwordEnabled} onCheckedChange={setPasswordEnabled} />
+                        </div>
+                        {passwordEnabled && (
+                            <div className="grid gap-2 pt-2 animate-in fade-in slide-in-from-top-2">
+                                <Label htmlFor="password">Set New Password</Label>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Enter new password to change..."
+                                />
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Monitor Selection */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Monitors</CardTitle>
+                        <CardDescription>Select which monitors to display on this status page.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {allMonitors.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">No monitors available. Create some monitors first.</p>
+                            ) : (
+                                allMonitors.map((monitor) => (
+                                    <div key={monitor.id} className="flex items-center space-x-2 border p-3 rounded-md">
+                                        <Checkbox
+                                            id={`monitor-${monitor.id}`}
+                                            checked={selectedMonitorIds.includes(monitor.id)}
+                                            onChange={() => toggleMonitor(monitor.id)}
+                                        />
+                                        <div className="grid gap-1.5 leading-none">
+                                            <Label
+                                                htmlFor={`monitor-${monitor.id}`}
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                            >
+                                                {monitor.name}
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                {monitor.url}
+                                            </p>
+                                        </div>
+                                        <div className="ml-auto">
+                                            <span className={`text-xs px-2 py-1 rounded-full ${monitor.status === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {monitor.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     )

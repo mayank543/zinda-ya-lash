@@ -1,10 +1,12 @@
+
 "use client"
 
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle2, AlertCircle, AlertTriangle, Activity, Globe, ArrowUpCircle, XCircle } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { CheckCircle2, AlertCircle, AlertTriangle, Activity, Globe, ArrowUpCircle, XCircle, Lock } from "lucide-react"
 import { useParams, notFound } from "next/navigation"
 
 export default function PublicStatusPage() {
@@ -16,62 +18,76 @@ export default function PublicStatusPage() {
     const [loading, setLoading] = React.useState(true)
     const [overallStatus, setOverallStatus] = React.useState<'up' | 'down' | 'degraded'>('up')
 
-    // Helper to generate fake history bars if real data is missing for now
-    // In production, this would come from the `heartbeats` table
+    // Auth State
+    const [isProtected, setIsProtected] = React.useState(false)
+    const [passwordInput, setPasswordInput] = React.useState("")
+    const [authError, setAuthError] = React.useState(false)
+
+    // Helper to generate fake history bars
     const generateHistory = (status: string) => {
         return Array.from({ length: 90 }).map((_, i) => {
-            // Simulate some downtime for 'down' monitors
             if (status === 'down' && i > 70) return 'down'
             if (status === 'paused') return 'paused'
             return 'up'
         })
     }
 
-    React.useEffect(() => {
-        async function fetchData() {
-            if (!slug) return
-            try {
-                // 1. Fetch Status Page Config
-                const { data: pageData, error: pageError } = await supabase
-                    .from('status_pages')
-                    .select('*')
-                    .eq('slug', slug)
-                    .single()
+    const fetchData = React.useCallback(async (pwd?: string) => {
+        if (!slug) return
+        setLoading(true)
+        setAuthError(false)
 
-                if (pageError || !pageData) {
-                    console.error("Page not found")
-                    setLoading(false)
-                    return
-                }
-                setPage(pageData)
+        try {
+            const res = await fetch(`/api/status-pages/public/${slug}`, {
+                method: 'POST',
+                body: JSON.stringify({ password: pwd }),
+                headers: { 'Content-Type': 'application/json' }
+            })
 
-                // 2. Fetch Monitors
-                // Fetch all monitors that are NOT in draft/paused (unless you want to show paused as "Not monitored")
-                const { data: monitorsData } = await supabase
-                    .from('monitors')
-                    .select('*')
-                    .order('name')
-
-                if (monitorsData) {
-                    setMonitors(monitorsData)
-
-                    // Calculate Overall Status
-                    // Only count 'active' monitors for overall status
-                    const activeMonitors = monitorsData.filter(m => m.status !== 'paused')
-                    const hasDown = activeMonitors.some(m => m.status === 'down')
-                    setOverallStatus(hasDown ? 'down' : 'up')
-                }
-
-            } catch (e) {
-                console.error(e)
-            } finally {
+            if (res.status === 401) {
+                setIsProtected(true)
                 setLoading(false)
+                setAuthError(!!pwd) // If we tried a password and failed
+                return
             }
+
+            if (res.status === 404) {
+                // Handle not found
+                setPage(null)
+                setLoading(false)
+                return
+            }
+
+            const data = await res.json()
+            setPage(data.page)
+            setMonitors(data.monitors)
+            setIsProtected(false)
+
+            // Calculate Overall Status
+            if (data.monitors) {
+                const activeMonitors = data.monitors.filter((m: any) => m.status !== 'paused')
+                const hasDown = activeMonitors.some((m: any) => m.status === 'down')
+                setOverallStatus(hasDown ? 'down' : 'up')
+            }
+
+        } catch (e) {
+            console.error(e)
+        } finally {
+            setLoading(false)
         }
-        fetchData()
     }, [slug])
 
-    if (!loading && !page) {
+    React.useEffect(() => {
+        // Try fetching without password first (or from localstorage if we wanted execution persistence)
+        fetchData()
+    }, [fetchData])
+
+    const handlePasswordSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        fetchData(passwordInput)
+    }
+
+    if (!loading && !isProtected && !page) {
         return notFound()
     }
 
@@ -85,28 +101,54 @@ export default function PublicStatusPage() {
         )
     }
 
-    // Appearance Settings
+    // Password Screen
+    if (isProtected) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#f8f9fa] p-4">
+                <Card className="w-full max-w-md">
+                    <CardContent className="pt-6 text-center space-y-6">
+                        <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                            <Lock className="h-6 w-6 text-gray-500" />
+                        </div>
+                        <div className="space-y-2">
+                            <h1 className="text-2xl font-semibold tracking-tight">Login Required</h1>
+                            <p className="text-sm text-muted-foreground">This status page is password protected.</p>
+                        </div>
+                        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                            <div className="space-y-2 text-left">
+                                <Input
+                                    type="password"
+                                    placeholder="Enter password"
+                                    value={passwordInput}
+                                    onChange={(e) => setPasswordInput(e.target.value)}
+                                    className={authError ? "border-red-500" : ""}
+                                />
+                                {authError && <p className="text-xs text-red-500">Incorrect password</p>}
+                            </div>
+                            <Button type="submit" className="w-full">View Status</Button>
+                        </form>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
+
+    // Appearance
     const isWide = page.layout_density === 'wide'
     const isCenter = page.layout_alignment === 'center'
     const containerClass = isWide ? "max-w-6xl" : "max-w-4xl"
-
-    // Colors
-    const overallColor = overallStatus === 'up' ? 'bg-[#27ae60]' : 'bg-[#e67e22]' // Green or Orange
-    const overallIcon = overallStatus === 'up' ? CheckCircle2 : AlertCircle
 
     return (
         <div className="min-h-screen bg-[#f8f9fa] font-sans pb-20">
             {/* Header Background */}
             <div className="bg-[#0b1120] text-white pt-12 pb-24">
                 <div className={`${containerClass} mx-auto px-6`}>
-                    {/* Logo / Branding */}
                     <div className={`flex ${isCenter ? 'justify-center' : 'justify-start'} mb-8`}>
                         {page.logo_url ? (
                             <img src={page.logo_url} alt={page.name} className="h-12 object-contain" />
                         ) : (
                             <div className="text-2xl font-bold flex items-center gap-2">
-                                {/* <Activity className="h-6 w-6 text-green-400" /> */}
-                                {page.name || "Use settings to add logo"}
+                                {page.name}
                             </div>
                         )}
                     </div>
@@ -130,7 +172,6 @@ export default function PublicStatusPage() {
                         <h2 className="text-3xl font-bold text-gray-900">
                             {overallStatus === 'up' ? 'All systems operational' : 'Some systems down'}
                         </h2>
-                        {/* <p className="text-gray-500 mt-1">Last updated 1 min ago</p> */}
                     </div>
                 </div>
             </div>
@@ -140,65 +181,69 @@ export default function PublicStatusPage() {
                 <h3 className="text-2xl font-bold text-gray-900 mb-6">Services</h3>
 
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 divide-y divide-gray-100">
-                    {monitors.map((monitor) => {
-                        const history = generateHistory(monitor.status)
+                    {monitors.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500">
+                            No monitors associated with this status page.
+                        </div>
+                    ) : (
+                        monitors.map((monitor) => {
+                            const history = generateHistory(monitor.status)
 
-                        return (
-                            <div key={monitor.id} className="p-6">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                                    <div className="flex items-center gap-2 text-gray-900 font-medium text-lg">
-                                        {monitor.name}
-                                        {/* Mock Uptime % for now (randomized slightly to look real or 100 if up) */}
-                                        <span className="text-gray-400 font-normal text-sm ml-2">
-                                            <a href={monitor.url} target="_blank" className="hover:underline opacity-50 mr-2">
-                                                {monitor.url ? new URL(monitor.url).hostname : ""}
-                                            </a>
-                                            <span className="text-[#27ae60]">| {monitor.status === 'up' ? '100.000%' : '98.420%'}</span>
-                                        </span>
+                            return (
+                                <div key={monitor.id} className="p-6">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                        <div className="flex items-center gap-2 text-gray-900 font-medium text-lg">
+                                            {monitor.name}
+                                            <span className="text-gray-400 font-normal text-sm ml-2">
+                                                <span className="opacity-50 mr-2">
+                                                    {monitor.url ? new URL(monitor.url).hostname : ""}
+                                                </span>
+                                                <span className="text-[#27ae60]">| {monitor.status === 'up' ? '100.000%' : '98.420%'}</span>
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {monitor.status === 'up' && (
+                                                <>
+                                                    <div className="h-2.5 w-2.5 rounded-full bg-[#27ae60]"></div>
+                                                    <span className="text-[#27ae60] font-medium text-sm">Operational</span>
+                                                </>
+                                            )}
+                                            {monitor.status === 'down' && (
+                                                <>
+                                                    <div className="h-2.5 w-2.5 rounded-full bg-[#e74c3c]"></div>
+                                                    <span className="text-[#e74c3c] font-medium text-sm">Down</span>
+                                                </>
+                                            )}
+                                            {monitor.status === 'paused' && (
+                                                <>
+                                                    <div className="h-2.5 w-2.5 rounded-full bg-slate-400"></div>
+                                                    <span className="text-slate-500 font-medium text-sm">Not monitored</span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
-                                        {monitor.status === 'up' && (
-                                            <>
-                                                <div className="h-2.5 w-2.5 rounded-full bg-[#27ae60]"></div>
-                                                <span className="text-[#27ae60] font-medium text-sm">Operational</span>
-                                            </>
-                                        )}
-                                        {monitor.status === 'down' && (
-                                            <>
-                                                <div className="h-2.5 w-2.5 rounded-full bg-[#e74c3c]"></div>
-                                                <span className="text-[#e74c3c] font-medium text-sm">Down</span>
-                                            </>
-                                        )}
-                                        {monitor.status === 'paused' && (
-                                            <>
-                                                <div className="h-2.5 w-2.5 rounded-full bg-slate-400"></div>
-                                                <span className="text-slate-500 font-medium text-sm">Not monitored</span>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Uptime Bar Visualization */}
-                                <div className="flex gap-[2px] h-8 items-end w-full">
-                                    {history.map((hStatus, i) => (
-                                        <div
-                                            key={i}
-                                            className={`flex-1 rounded-[1px] ${hStatus === 'up' ? 'bg-[#27ae60]' :
+                                    {/* Uptime Bar Visualization */}
+                                    <div className="flex gap-[2px] h-8 items-end w-full">
+                                        {history.map((hStatus, i) => (
+                                            <div
+                                                key={i}
+                                                className={`flex-1 rounded-[1px] ${hStatus === 'up' ? 'bg-[#27ae60]' :
                                                     hStatus === 'down' ? 'bg-[#e74c3c]' :
-                                                        'bg-[#7f8c8d]' // Paused/Gray
-                                                }`}
-                                            style={{
-                                                height: '100%',
-                                                opacity: hStatus === 'paused' ? 0.3 : 1
-                                            }}
-                                            title={hStatus}
-                                        />
-                                    ))}
+                                                        'bg-[#7f8c8d]'
+                                                    }`}
+                                                style={{
+                                                    height: '100%',
+                                                    opacity: hStatus === 'paused' ? 0.3 : 1
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        )
-                    })}
+                            )
+                        })
+                    )}
                 </div>
             </div>
 
