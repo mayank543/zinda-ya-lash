@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { useMonitorModal } from "@/hooks/use-monitor-modal"
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { supabase } from "@/lib/supabase"
 
 interface Monitor {
     id: string
@@ -54,6 +55,29 @@ export function MonitorDetailsView({ id }: { id: string }) {
 
     React.useEffect(() => {
         fetchMonitor()
+
+        // Real-time for this specific monitor
+        const channel = supabase
+            .channel(`monitor-${id}-changes`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'monitors',
+                    filter: `id=eq.${id}`,
+                },
+                (payload) => {
+                    console.log('Real-time update for details:', payload)
+                    setMonitor((prev) => (prev ? { ...prev, ...payload.new } : prev))
+                    toast.info(`Monitor status updated to ${payload.new.status}`)
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [id])
 
     const handleStatusChange = async (newStatus: string) => {

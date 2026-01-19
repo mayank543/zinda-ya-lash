@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Activity, AlertCircle, ArrowUpCircle, CheckCircle2, Clock } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 import * as React from "react"
 
@@ -32,6 +33,26 @@ export function Overview() {
             }
         }
         fetchStats()
+
+        // Real-time subscription to refresh stats
+        const channel = supabase
+            .channel('overview-stats-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'monitors',
+                },
+                () => {
+                    fetchStats() // Re-fetch on any change
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [])
 
     return (

@@ -1,5 +1,7 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+
 import * as React from "react"
 import { Search, Filter, Download, Info, CheckCircle2, AlertCircle, X, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -146,6 +148,7 @@ const incidents = [
 ]
 
 export default function IncidentsPage() {
+    const router = useRouter()
     const [incidents, setIncidents] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
 
@@ -254,7 +257,11 @@ export default function IncidentsPage() {
                         </TableHeader>
                         <TableBody>
                             {incidents.map((incident) => (
-                                <TableRow key={incident.id} className="hover:bg-muted/50 border-b border-border/50">
+                                <TableRow
+                                    key={incident.id}
+                                    className="hover:bg-muted/50 border-b border-border/50 cursor-pointer"
+                                    onClick={() => router.push(`/incidents/${incident.id}`)}
+                                >
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             {incident.status === "Resolved" ? (

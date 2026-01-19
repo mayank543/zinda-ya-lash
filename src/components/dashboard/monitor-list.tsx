@@ -49,6 +49,7 @@ interface Monitor {
 }
 
 import { useMonitorModal } from "@/hooks/use-monitor-modal"
+import { supabase } from "@/lib/supabase"
 
 export function MonitorList() {
     const { onOpen } = useMonitorModal()
@@ -75,9 +76,40 @@ export function MonitorList() {
     React.useEffect(() => {
         fetchMonitors()
 
-        // Refresh every 30 seconds
-        const interval = setInterval(fetchMonitors, 30000)
-        return () => clearInterval(interval)
+        // Real-time subscription
+        const channel = supabase
+            .channel('monitor-list-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'monitors',
+                },
+                (payload) => {
+                    console.log('Real-time update received:', payload)
+                    // Optimistic update or refresh
+                    if (payload.eventType === 'UPDATE') {
+                        setMonitors((prev) =>
+                            prev.map((m) =>
+                                m.id === payload.new.id ? { ...m, ...payload.new } : m
+                            )
+                        )
+                        toast.info(`Monitor ${payload.new.name || 'updated'} status changed to ${payload.new.status}`)
+                    } else if (payload.eventType === 'INSERT') {
+                        setMonitors((prev) => [payload.new as Monitor, ...prev])
+                        toast.success(`New monitor ${payload.new.name} added`)
+                    } else if (payload.eventType === 'DELETE') {
+                        setMonitors((prev) => prev.filter((m) => m.id !== payload.old.id))
+                        toast.info("Monitor deleted")
+                    }
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [])
 
     const handleDelete = async (id: string) => {
