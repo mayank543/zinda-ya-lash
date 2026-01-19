@@ -333,7 +333,7 @@ export function MonitorDetailsView({ id }: { id: string }) {
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
-                            <div className="h-[300px] w-full">
+                            <div className="h-[300px] w-full" style={{ height: 300, minWidth: 0 }}>
                                 {chartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={chartData}>
