@@ -12,7 +12,7 @@ export async function GET(
     // Check access by trying to fetch
     const { data, error } = await supabase
         .from('monitors')
-        .select('*')
+        .select('*, monitor_notifications(channel_id)')
         .eq('id', id)
         .single()
 
@@ -32,14 +32,34 @@ export async function PATCH(
     const body = await request.json()
     const { id } = params
 
+    // Separate notifications from monitor fields
+    const { notifications, ...monitorUpdates } = body
+
+    // 1. Update Monitor Fields
     const { data, error } = await supabase
         .from('monitors')
-        .update(body)
+        .update(monitorUpdates)
         .eq('id', id)
         .select()
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    // 2. Update Notifications Associations if provided
+    if (notifications && Array.isArray(notifications)) {
+        // Delete existing
+        await supabase.from('monitor_notifications').delete().eq('monitor_id', id)
+
+        // Insert new (if any)
+        if (notifications.length > 0) {
+            const rows = notifications.map((channelId: string) => ({
+                monitor_id: id,
+                channel_id: channelId
+            }))
+            const { error: linkError } = await supabase.from('monitor_notifications').insert(rows)
+            if (linkError) console.error("Failed to link notifications", linkError)
+        }
     }
 
     return NextResponse.json(data[0])

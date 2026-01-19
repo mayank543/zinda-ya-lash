@@ -50,6 +50,9 @@ export default function EditMonitorPage() {
     const [isFetching, setIsFetching] = React.useState(true)
     const [interval, setInterval] = React.useState(300)
 
+    const [allChannels, setAllChannels] = React.useState<any[]>([])
+    const [selectedChannels, setSelectedChannels] = React.useState<string[]>([])
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -59,6 +62,21 @@ export default function EditMonitorPage() {
             interval: "300",
         },
     })
+
+    // Fetch Notification Channels
+    React.useEffect(() => {
+        async function fetchChannels() {
+            try {
+                const res = await fetch("/api/notifications/channels")
+                if (res.ok) {
+                    setAllChannels(await res.json())
+                }
+            } catch (error) {
+                console.error("Failed to fetch channels")
+            }
+        }
+        fetchChannels()
+    }, [])
 
     React.useEffect(() => {
         async function fetchMonitor() {
@@ -78,6 +96,12 @@ export default function EditMonitorPage() {
                         interval: monitor.interval.toString(),
                     })
                     setInterval(monitor.interval)
+
+                    // Pre-select channels
+                    if (monitor.monitor_notifications) {
+                        const linkedIds = monitor.monitor_notifications.map((n: any) => n.channel_id)
+                        setSelectedChannels(linkedIds)
+                    }
                 }
             } catch (error) {
                 console.error("Failed to fetch monitor")
@@ -100,6 +124,7 @@ export default function EditMonitorPage() {
                     url: values.url,
                     type: values.type,
                     interval: parseInt(values.interval),
+                    notifications: selectedChannels
                 }),
             })
 
@@ -260,18 +285,48 @@ export default function EditMonitorPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Notifications (Simplified/Mocked for now as per Add Page) */}
+                    {/* Notifications */}
                     <Card className="bg-card border-border/50">
                         <CardContent className="p-6">
-                            <Label className="font-semibold mb-4 block">How will we notify you?</Label>
-                            <div className="grid md:grid-cols-4 gap-4">
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox defaultChecked />
-                                        <span className="text-sm font-medium">E-mail</span>
+                            <div className="flex justify-between items-center mb-4">
+                                <Label className="font-semibold">How will we notify you?</Label>
+                                <span className="text-xs text-muted-foreground">Select channels to alert when monitor goes down/up.</span>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {allChannels.length > 0 ? (
+                                    allChannels.map(channel => (
+                                        <div key={channel.id} className="flex items-start gap-3 p-3 rounded-md border border-border/40 bg-muted/20">
+                                            <Checkbox
+                                                id={channel.id}
+                                                checked={selectedChannels.includes(channel.id)}
+                                                onChange={(e) => {
+                                                    const checked = e.target.checked
+                                                    if (checked) {
+                                                        setSelectedChannels([...selectedChannels, channel.id])
+                                                    } else {
+                                                        setSelectedChannels(selectedChannels.filter(id => id !== channel.id))
+                                                    }
+                                                }}
+                                            />
+                                            <div className="space-y-1">
+                                                <Label htmlFor={channel.id} className="font-medium cursor-pointer flex items-center gap-2">
+                                                    {channel.name}
+                                                    <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 font-normal opacity-70">
+                                                        {channel.type}
+                                                    </Badge>
+                                                </Label>
+                                                <div className="text-xs text-muted-foreground break-all">
+                                                    {channel.type === 'email' ? channel.config.email_address : channel.config.webhook_url || 'Configured'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-sm text-muted-foreground col-span-2">
+                                        No notification channels found. <a href="/settings/notifications" className="text-green-500 hover:underline">Configure them here.</a>
                                     </div>
-                                    <div className="text-xs text-muted-foreground ml-6">mayankdoholiya@gmail.com</div>
-                                </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

@@ -39,11 +39,13 @@ import {
     SidebarMenuSubItem,
     SidebarRail,
     SidebarSeparator,
+    SidebarFooter,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { AppSidebarUser } from "@/components/app-sidebar-user"
 
 // Sample data for monitors
 const monitors = [
@@ -142,9 +144,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
-                                    <Link href="/integrations">
+                                    <Link href="/settings/notifications">
                                         <Share2 className="h-4 w-4" />
-                                        <span>Integrations & API</span>
+                                        <span>Notifications</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
@@ -152,6 +154,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
+            <SidebarFooter>
+                <AppSidebarUser />
+            </SidebarFooter>
             <SidebarRail />
         </Sidebar>
     )

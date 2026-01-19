@@ -206,9 +206,32 @@ export function MonitorList() {
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="text-lg font-semibold">Monitors</h3>
-                        <p className="text-sm text-muted-foreground">Overview of your monitored endpoints.</p>
+                        <p className="text-sm text-muted-foreground mr-4">Overview of your monitored endpoints.</p>
                     </div>
+
                     <div className="flex gap-2">
+                        <Button
+                            variant="default"
+                            size="sm"
+                            className="mr-2 bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={async () => {
+                                const toastId = toast.loading("Running checks...")
+                                try {
+                                    const res = await fetch("/api/cron")
+                                    const data = await res.json()
+                                    if (res.ok) {
+                                        toast.success(`Checked ${data.checked_count} monitors`, { id: toastId })
+                                        fetchMonitors() // Refresh list
+                                    } else {
+                                        toast.error("Failed to run checks", { id: toastId })
+                                    }
+                                } catch (e) {
+                                    toast.error("Error running checks", { id: toastId })
+                                }
+                            }}
+                        >
+                            <Play className="h-3 w-3 mr-1" /> Run Checks
+                        </Button>
                         <Button
                             variant={statusFilter === "all" ? "secondary" : "ghost"}
                             size="sm"

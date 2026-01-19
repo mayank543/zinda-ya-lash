@@ -92,9 +92,68 @@ export async function GET() {
                     latency: latency,
                 })
 
+
                 // B. Detect Status Change & Manage Incidents
                 if (monitor.status !== status) {
                     // Status has changed
+
+                    // --- 1. SEND NOTIFICATIONS ---
+                    const { data: notifications } = await supabase
+                        .from('monitor_notifications')
+                        .select('channel_id, notification_channels(type, config)')
+                        .eq('monitor_id', monitor.id)
+
+                    if (notifications && notifications.length > 0) {
+                        const eventType = status === 'down' ? 'DOWN' : 'UP'
+                        const message = `Monitor ${monitor.name} (${monitor.url}) is ${eventType}. Code: ${responseStatus}`
+
+                        await Promise.all(notifications.map(async (n: any) => {
+                            const channel = n.notification_channels
+                            if (!channel) return
+
+                            try {
+                                if (channel.type === 'webhook' && channel.config.webhook_url) {
+                                    await fetch(channel.config.webhook_url, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            event: eventType,
+                                            monitor: { id: monitor.id, name: monitor.name, url: monitor.url },
+                                            timestamp: new Date().toISOString()
+                                        })
+                                    })
+                                } else if (channel.type === 'email' && channel.config.email_address) {
+                                    // Send Real Email via Resend
+                                    const { Resend } = require('resend')
+                                    const resend = new Resend(process.env.RESEND_API_KEY)
+
+                                    await resend.emails.send({
+                                        from: 'UptimeRobot Clone <onboarding@resend.dev>',
+                                        to: channel.config.email_address,
+                                        subject: `Monitor Alert: ${monitor.name} is ${eventType}`,
+                                        html: `
+                                            <div style="font-family: sans-serif; padding: 20px;">
+                                                <h2 style="color: ${eventType === 'DOWN' ? 'red' : 'green'}">
+                                                    Monitor is ${eventType}
+                                                </h2>
+                                                <p><strong>Monitor:</strong> ${monitor.name}</p>
+                                                <p><strong>URL:</strong> ${monitor.url}</p>
+                                                <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                                                <p><strong>Status Code:</strong> ${responseStatus}</p>
+                                                <br/>
+                                                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/monitors/${monitor.id}">View Details</a>
+                                            </div>
+                                        `
+                                    })
+                                    console.log(`[EMAIL SENT] To: ${channel.config.email_address}`)
+                                }
+                            } catch (alertErr) {
+                                console.error(`Failed to send alert to channel ${channel.type}`, alertErr)
+                            }
+                        }))
+                    }
+
+                    // --- 2. MANAGE INCIDENTS ---
                     if (status === 'down') {
                         // Monitor went DOWN -> Create Incident
                         await supabase.from('incidents').insert({

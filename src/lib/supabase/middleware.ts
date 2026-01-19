@@ -57,16 +57,24 @@ export async function updateSession(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        // Public Status Page Routes
-        !request.nextUrl.pathname.startsWith('/status/') &&
-        !request.nextUrl.pathname.startsWith('/api/status-pages/public') &&
-        // Public Cron
-        !request.nextUrl.pathname.startsWith('/api/cron')
-    ) {
+    // Define public paths that don't require authentication
+    const PUBLIC_PATHS = [
+        '/login',
+        '/auth',
+        '/status', // Covers /status/[slug] and other status subpaths
+        '/api/status-pages/public',
+        '/api/cron'
+    ]
+
+    const path = request.nextUrl.pathname
+    const isPublicPath = PUBLIC_PATHS.some(publicPath =>
+        path.startsWith(publicPath)
+    )
+
+    console.log(`[Middleware] Path: ${path}, User: ${!!user}, IsPublic: ${isPublicPath}`)
+
+    if (!user && !isPublicPath) {
+        console.log(`[Middleware] Redirecting to /login`)
         // Return to login if no user and trying to access protected route
         const url = request.nextUrl.clone()
         url.pathname = '/login'
