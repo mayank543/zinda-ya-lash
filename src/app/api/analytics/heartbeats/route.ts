@@ -44,9 +44,19 @@ export async function GET() {
         const chartData = Object.keys(hourlyData).map(time => ({
             time,
             ms: Math.round(hourlyData[time].totalLatency / hourlyData[time].count)
-        })).sort((a, b) => parseInt(a.time) - parseInt(b.time)) // Basic sort, could be improved
+        })).sort((a, b) => parseInt(a.time) - parseInt(b.time))
 
-        return NextResponse.json({ chart: chartData })
+        // Calculate stats
+        const totalHeartbeats = heartbeats.length
+        const totalSuccessful = heartbeats.filter(h => h.status === 'up' || (h.status as any) === 200).length // Adapting to possible status types
+        const uptime = totalHeartbeats > 0 ? (totalSuccessful / totalHeartbeats) * 100 : 100
+
+        return NextResponse.json({
+            chart: chartData,
+            stats: {
+                uptime: Math.round(uptime * 100) / 100 // Round to 2 decimals
+            }
+        })
 
     } catch (error) {
         return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 })

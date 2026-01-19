@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
     Activity,
     AlertCircle,
@@ -78,7 +79,12 @@ const monitors = [
         color: "text-gray-400",
     },
 ]
+
+// ... imports remain same ...
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const pathname = usePathname()
+
     return (
         <Sidebar {...props}>
             <SidebarHeader className="h-16 border-b border-border/50 px-4 flex items-center justify-center">
@@ -100,9 +106,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarContent>
                 <SidebarGroup>
                     <SidebarGroupContent>
-                        <SidebarMenu>
+                        <SidebarMenu className="gap-2">
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild isActive>
+                                <SidebarMenuButton asChild isActive={pathname === "/" || pathname.startsWith("/monitors") || pathname.startsWith("/dashboard")}>
                                     <Link href="/">
                                         <Activity className="h-4 w-4" />
                                         <span>Monitoring</span>
@@ -110,7 +116,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
+                                <SidebarMenuButton asChild isActive={pathname.startsWith("/incidents")}>
                                     <Link href="/incidents">
                                         <ShieldAlert className="h-4 w-4" />
                                         <span>Incidents</span>
@@ -118,7 +124,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
+                                <SidebarMenuButton asChild isActive={pathname.startsWith("/status-pages")}>
                                     <Link href="/status-pages">
                                         <PanelTop className="h-4 w-4" />
                                         <span>Status pages</span>
@@ -127,7 +133,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             </SidebarMenuItem>
 
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
+                                <SidebarMenuButton asChild isActive={pathname.startsWith("/maintenance")}>
                                     <Link href="/maintenance">
                                         <Wrench className="h-4 w-4" />
                                         <span>Maintenance</span>
@@ -135,7 +141,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
+                                <SidebarMenuButton asChild isActive={pathname.startsWith("/team-members")}>
                                     <Link href="/team-members">
                                         <Users className="h-4 w-4" />
                                         <span>Team members</span>
@@ -143,7 +149,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
+                                <SidebarMenuButton asChild isActive={pathname.startsWith("/settings/notifications")}>
                                     <Link href="/settings/notifications">
                                         <Share2 className="h-4 w-4" />
                                         <span>Notifications</span>
