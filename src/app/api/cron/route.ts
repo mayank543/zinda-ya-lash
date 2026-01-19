@@ -16,10 +16,32 @@ export async function GET() {
         if (!monitors || monitors.length === 0) {
             return NextResponse.json({ message: 'No monitors to check' })
         }
+        // 2. Fetch Active Maintenance Windows
+        const now = new Date().toISOString()
+        const { data: activeWindows } = await supabase
+            .from('maintenance_windows')
+            .select('id, maintenance_monitors(monitor_id)')
+            .or(`status.eq.active,and(status.eq.scheduled,start_time.lte.${now},end_time.gte.${now})`)
 
-        // 2. Check each monitor (in parallel)
+        const maintenanceMonitorIds = new Set<string>()
+        if (activeWindows) {
+            activeWindows.forEach((w: any) => {
+                if (w.maintenance_monitors) {
+                    w.maintenance_monitors.forEach((m: any) => maintenanceMonitorIds.add(m.monitor_id))
+                }
+            })
+        }
+
+        // 3. Filter out monitors currently in maintenance
+        const monitorsToCheck = monitors.filter(m => !maintenanceMonitorIds.has(m.id))
+
+        if (monitorsToCheck.length === 0) {
+            return NextResponse.json({ message: 'All monitors are in maintenance or paused' })
+        }
+
+        // 4. Check each monitor (in parallel)
         const results = await Promise.all(
-            monitors.map(async (monitor) => {
+            monitorsToCheck.map(async (monitor) => {
                 const start = performance.now()
                 let status = 'down'
                 let latency = 0

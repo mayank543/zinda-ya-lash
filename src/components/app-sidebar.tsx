@@ -125,21 +125,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             </SidebarMenuItem>
 
                             <SidebarMenuItem>
-                                <SidebarMenuButton>
-                                    <Wrench className="h-4 w-4" />
-                                    <span>Maintenance</span>
+                                <SidebarMenuButton asChild>
+                                    <Link href="/maintenance">
+                                        <Wrench className="h-4 w-4" />
+                                        <span>Maintenance</span>
+                                    </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton>
-                                    <Users className="h-4 w-4" />
-                                    <span>Team members</span>
+                                <SidebarMenuButton asChild>
+                                    <Link href="/team-members">
+                                        <Users className="h-4 w-4" />
+                                        <span>Team members</span>
+                                    </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton>
-                                    <Share2 className="h-4 w-4" />
-                                    <span>Integrations & API</span>
+                                <SidebarMenuButton asChild>
+                                    <Link href="/integrations">
+                                        <Share2 className="h-4 w-4" />
+                                        <span>Integrations & API</span>
+                                    </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                         </SidebarMenu>

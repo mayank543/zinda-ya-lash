@@ -1,8 +1,9 @@
 
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
+    const supabase = await createClient()
     const { data, error } = await supabase
         .from('status_pages')
         .select('*')
@@ -16,6 +17,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+    const supabase = await createClient()
     const body = await request.json()
 
     if (!body.name || !body.slug) {
@@ -35,7 +37,6 @@ export async function POST(request: Request) {
         .single()
 
     if (error) {
-        // Handle unique slug error specifically if possible
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -54,7 +55,6 @@ export async function POST(request: Request) {
 
         if (junctionError) {
             console.error("Failed to associate monitors", junctionError)
-            // We return success for the page creation but maybe log a warning
         }
     }
 

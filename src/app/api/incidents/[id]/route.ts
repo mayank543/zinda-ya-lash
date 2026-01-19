@@ -1,11 +1,12 @@
 
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const supabase = await createClient()
     const { id } = await params
 
     const { data, error } = await supabase
@@ -33,6 +34,7 @@ export async function PATCH(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const supabase = await createClient()
     const { id } = await params
     const body = await request.json()
 
@@ -46,7 +48,6 @@ export async function PATCH(
     if (body.root_cause) updates.root_cause = body.root_cause
     if (body.status === 'resolved') {
         updates.resolved_at = new Date().toISOString()
-        // Calculate duration if needed, but usually we do that on retrieval or explicit set
     }
 
     const { data, error } = await supabase

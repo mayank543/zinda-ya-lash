@@ -1,8 +1,9 @@
 
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
+    const supabase = await createClient()
     const { data, error } = await supabase
         .from('monitors')
         .select('*')
@@ -16,11 +17,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+    const supabase = await createClient()
     const body = await request.json()
 
     // Basic validation could be improved
-    if (!body.name || !body.type) {
-        return NextResponse.json({ error: 'Name and Type are required' }, { status: 400 })
+    if (!body.name || !body.url || !body.type) {
+        return NextResponse.json({ error: 'Name, URL and Type are required' }, { status: 400 })
     }
 
     const { data, error } = await supabase

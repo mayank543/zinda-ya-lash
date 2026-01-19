@@ -1,11 +1,12 @@
 
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const supabase = await createClient()
     const { id } = await params
 
     // 1. Fetch Page Details
@@ -18,6 +19,8 @@ export async function GET(
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     // 2. Fetch Associated Monitor IDs
+    // RLS: User can only select status_pages they own. The junction table 'status_page_monitors' 
+    // requires logic to ensure they own the Status Page.
     const { data: monitorRelations } = await supabase
         .from('status_page_monitors')
         .select('monitor_id')
@@ -32,6 +35,7 @@ export async function PATCH(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const supabase = await createClient()
     const { id } = await params
     const body = await request.json()
 
@@ -58,9 +62,7 @@ export async function PATCH(
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // 2. Update Monitors Association (if provided)
-    // NOTE: This uses a simple "delete all and re-insert" strategy for simplicity, 
-    // or we can diff. Delete-all-reinsert is safer for consistently syncing the list.
+    // 2. Update Monitors Association
     if (body.monitors && Array.isArray(body.monitors)) {
         // A. Remove existing
         await supabase
@@ -87,6 +89,7 @@ export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const supabase = await createClient()
     const { id } = await params
 
     const { error } = await supabase
