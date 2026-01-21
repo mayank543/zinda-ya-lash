@@ -203,13 +203,13 @@ export function MonitorList() {
     return (
         <div className="xl:col-span-4 rounded-md border bg-card">
             <div className="p-6 pb-0">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
                     <div>
                         <h3 className="text-lg font-semibold">Monitors</h3>
                         <p className="text-sm text-muted-foreground mr-4">Overview of your monitored endpoints.</p>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         <Button
                             variant="default"
                             size="sm"
@@ -268,92 +268,173 @@ export function MonitorList() {
                 </div>
             </div>
 
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[30px]"></TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="hidden md:table-cell">Last Check</TableHead>
-                        <TableHead className="hidden md:table-cell text-right">Interval</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredMonitors.length === 0 ? (
+            {/* Desktop View - Table */}
+            <div className="hidden md:block">
+                <Table>
+                    <TableHeader>
                         <TableRow>
-                            <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                No monitors found. Add one to get started!
-                            </TableCell>
+                            <TableHead className="w-[30px]"></TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-muted-foreground">Last Check</TableHead>
+                            <TableHead className="text-right text-muted-foreground">Interval</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                    ) : (
-                        filteredMonitors.map((monitor) => (
-                            <TableRow key={monitor.id}>
-                                <TableCell>
-                                    {getStatusIcon(monitor.status)}
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                    <div className="flex flex-col">
-                                        <div
-                                            onClick={() => router.push(`/monitors/${monitor.id}`)}
-                                            className="font-medium hover:underline cursor-pointer"
-                                        >
-                                            {monitor.name}
-                                        </div>
-                                        <a href={monitor.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground flex items-center hover:underline truncate max-w-[200px]">
-                                            {monitor.url} <ExternalLink className="h-3 w-3 ml-1" />
-                                        </a>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    {getStatusBadge(monitor.status)}
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                                    {monitor.last_checked ? new Date(monitor.last_checked).toLocaleString() : "Pending"}
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell text-right text-muted-foreground text-sm">
-                                    {monitor.interval < 60 ? `${monitor.interval}s` : `${Math.floor(monitor.interval / 60)}m`}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                <span className="sr-only">Open menu</span>
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                            <DropdownMenuItem onClick={() => window.open(monitor.url, '_blank')}>
-                                                <ExternalLink className="mr-2 h-4 w-4" /> Visit URL
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => router.push(`/monitors/${monitor.id}/edit`)}>
-                                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => handleStatusChange(monitor.id, monitor.status === 'paused' ? 'up' : 'paused')}>
-                                                {monitor.status === "paused" ? (
-                                                    <>
-                                                        <Play className="mr-2 h-4 w-4" /> Resume
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Pause className="mr-2 h-4 w-4" /> Pause
-                                                    </>
-                                                )}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(monitor.id)}>
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredMonitors.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                    No monitors found. Add one to get started!
                                 </TableCell>
                             </TableRow>
-                        ))
-                    )}
-                </TableBody>
-            </Table>
+                        ) : (
+                            filteredMonitors.map((monitor) => (
+                                <TableRow key={monitor.id}>
+                                    <TableCell>
+                                        {getStatusIcon(monitor.status)}
+                                    </TableCell>
+                                    <TableCell className="font-medium">
+                                        <div className="flex flex-col">
+                                            <div
+                                                onClick={() => router.push(`/monitors/${monitor.id}`)}
+                                                className="font-medium hover:underline cursor-pointer"
+                                            >
+                                                {monitor.name}
+                                            </div>
+                                            <a href={monitor.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground flex items-center hover:underline truncate max-w-[200px]">
+                                                {monitor.url} <ExternalLink className="h-3 w-3 ml-1" />
+                                            </a>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        {getStatusBadge(monitor.status)}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                        {monitor.last_checked ? new Date(monitor.last_checked).toLocaleString() : "Pending"}
+                                    </TableCell>
+                                    <TableCell className="text-right text-muted-foreground text-sm">
+                                        {monitor.interval < 60 ? `${monitor.interval}s` : `${Math.floor(monitor.interval / 60)}m`}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <span className="sr-only">Open menu</span>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => window.open(monitor.url, '_blank')}>
+                                                    <ExternalLink className="mr-2 h-4 w-4" /> Visit URL
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => router.push(`/monitors/${monitor.id}/edit`)}>
+                                                    <Edit className="mr-2 h-4 w-4" /> Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleStatusChange(monitor.id, monitor.status === 'paused' ? 'up' : 'paused')}>
+                                                    {monitor.status === "paused" ? (
+                                                        <>
+                                                            <Play className="mr-2 h-4 w-4" /> Resume
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Pause className="mr-2 h-4 w-4" /> Pause
+                                                        </>
+                                                    )}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(monitor.id)}>
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+
+            {/* Mobile View - Cards */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+                {filteredMonitors.length === 0 ? (
+                    <div className="h-24 flex items-center justify-center text-muted-foreground border rounded-md p-4">
+                        No monitors found. Add one to get started!
+                    </div>
+                ) : (
+                    filteredMonitors.map((monitor) => (
+                        <div key={monitor.id} className="border rounded-lg p-4 space-y-3 bg-card text-card-foreground shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    {getStatusIcon(monitor.status)}
+                                    <div className="font-semibold">{monitor.name}</div>
+                                </div>
+                                {getStatusBadge(monitor.status)}
+                            </div>
+
+                            <div className="text-sm">
+                                <a href={monitor.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground flex items-center hover:underline truncate">
+                                    {monitor.url} <ExternalLink className="h-3 w-3 ml-1" />
+                                </a>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                                <div>
+                                    <span className="font-medium">Checked:</span> {monitor.last_checked ? new Date(monitor.last_checked).toLocaleTimeString() : "Pending"}
+                                </div>
+                                <div>
+                                    <span className="font-medium">Interval:</span> {monitor.interval < 60 ? `${monitor.interval}s` : `${Math.floor(monitor.interval / 60)}m`}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-2 border-t">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => router.push(`/monitors/${monitor.id}`)}
+                                >
+                                    Details
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => handleStatusChange(monitor.id, monitor.status === 'paused' ? 'up' : 'paused')}
+                                >
+                                    {monitor.status === "paused" ? (
+                                        <>
+                                            <Play className="mr-2 h-4 w-4" /> Resume
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Pause className="mr-2 h-4 w-4" /> Pause
+                                        </>
+                                    )}
+                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => router.push(`/monitors/${monitor.id}/edit`)}>
+                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(monitor.id)}>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
     )
 }

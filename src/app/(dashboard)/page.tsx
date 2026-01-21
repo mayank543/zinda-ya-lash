@@ -6,11 +6,11 @@ import { ResponseTimeChart } from "@/components/dashboard/response-time-chart"
 
 export default function Page() {
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4">
+    <div className="flex flex-1 flex-col gap-4">
       <Overview />
-      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-7">
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-7">
         <MonitorList />
-        <div className="lg:col-span-3">
+        <div className="xl:col-span-3">
           <ResponseTimeChart />
         </div>
       </div>
