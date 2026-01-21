@@ -112,52 +112,61 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
 
     return (
         <div className="flex flex-col gap-6 p-6 max-w-4xl mx-auto w-full pb-20">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" onClick={() => router.back()}>
-                    <ArrowLeft className="h-4 w-4 mr-1" /> Back
-                </Button>
-                <h1 className="text-2xl font-bold tracking-tight">Edit Status Page</h1>
-                <div className="ml-auto flex gap-2">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-2xl font-bold tracking-tight">Edit <span className="text-green-500">Status page</span> {name}.</h1>
+                    <div className="text-sm text-muted-foreground">
+                        Public status page, hosted on <Link href={`/status/${slug}`} target="_blank" className="text-green-500 hover:underline">stats.uptimerobot.com/{slug}</Link>
+                    </div>
+                </div>
+                <div>
                     <Link href={`/status/${slug}`} target="_blank">
-                        <Button variant="outline">
+                        <Button variant="outline" size="sm">
                             <ExternalLink className="mr-2 h-4 w-4" /> View Page
                         </Button>
                     </Link>
-                    <Button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700">
-                        <Save className="mr-2 h-4 w-4" /> Save Changes
-                    </Button>
                 </div>
             </div>
 
             <div className="grid gap-6">
                 {/* General Settings */}
-                <Card>
+                <Card className="border-none shadow-sm bg-card">
                     <CardHeader>
-                        <CardTitle>General Settings</CardTitle>
-                        <CardDescription>Basic configuration for your status page.</CardDescription>
+                        <CardTitle className="text-lg font-semibold flex items-center gap-1">Name & homepage <span className="text-green-500">.</span></CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="name">Page Name</Label>
-                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Name of the status page</Label>
+                                <div className="text-xs text-muted-foreground">E.g. your brand. It is used in status page heading, title, etc.</div>
+                                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Status page" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="homepage">Homepage URL</Label>
+                                <div className="text-xs text-muted-foreground">The link target for the logo (or main title) on status page.</div>
+                                <Input id="homepage" placeholder="E.g. https://yourdomain.com" />
+                            </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="slug">Slug (URL)</Label>
-                            <div className="flex items-center">
-                                <span className="text-sm text-muted-foreground mr-1">/status/</span>
-                                <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="slug">Slug (URL)</Label>
+                                <div className="flex items-center">
+                                    <span className="text-sm text-muted-foreground mr-1">/status/</span>
+                                    <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
+                                </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Password Protection */}
-                <Card>
+                <Card className="border-none shadow-sm bg-card">
                     <CardHeader>
-                        <CardTitle>Access Control</CardTitle>
+                        <CardTitle className="text-lg font-semibold flex items-center gap-1">Password <span className="text-green-500">.</span></CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between border p-4 rounded-lg">
                             <div className="space-y-0.5">
                                 <Label className="text-base">Password Protection</Label>
                                 <p className="text-sm text-muted-foreground">
@@ -182,9 +191,9 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
                 </Card>
 
                 {/* Monitor Selection */}
-                <Card>
+                <Card className="border-none shadow-sm bg-card">
                     <CardHeader>
-                        <CardTitle>Monitors</CardTitle>
+                        <CardTitle className="text-lg font-semibold flex items-center gap-1">Monitors <span className="text-green-500">.</span></CardTitle>
                         <CardDescription>Select which monitors to display on this status page.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -193,7 +202,7 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
                                 <p className="text-sm text-muted-foreground">No monitors available. Create some monitors first.</p>
                             ) : (
                                 allMonitors.map((monitor) => (
-                                    <div key={monitor.id} className="flex items-center space-x-2 border p-3 rounded-md">
+                                    <div key={monitor.id} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-muted/30 transition-colors">
                                         <Checkbox
                                             id={`monitor-${monitor.id}`}
                                             checked={selectedMonitorIds.includes(monitor.id)}
@@ -202,7 +211,7 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
                                         <div className="grid gap-1.5 leading-none">
                                             <Label
                                                 htmlFor={`monitor-${monitor.id}`}
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                                             >
                                                 {monitor.name}
                                             </Label>
@@ -221,6 +230,13 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+
+            {/* Fixed Bottom Bar */}
+            <div className="fixed bottom-0 left-0 lg:right-64 right-0 lg:left-0 p-4 bg-card border-t border-border flex justify-end z-10 w-full lg:w-[calc(100%-16rem)]">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto" onClick={handleSave} disabled={saving}>
+                    {saving ? "Saving..." : "Save changes"}
+                </Button>
             </div>
         </div>
     )

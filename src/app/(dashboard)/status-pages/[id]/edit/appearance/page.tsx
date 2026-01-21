@@ -125,10 +125,9 @@ export default function StatusPageAppearance() {
     }
 
     return (
-        <div className="flex h-screen bg-background overflow-hidden relative">
-
+        <>
             {/* Main Content Area */}
-            <div className="flex-1 overflow-auto bg-background pb-20">
+            <div className="flex-1 bg-background pb-20">
                 <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto w-full">
 
                     {/* Header */}
@@ -353,33 +352,7 @@ export default function StatusPageAppearance() {
                     </Card>
 
                 </div>
-            </div>
-
-            {/* Right Sidebar */}
-            <div className="w-64 border-l border-border/40 bg-card hidden lg:block p-4 space-y-2">
-                <Link href="/status-pages" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-8">
-                    <ArrowLeft className="h-4 w-4" /> Back to Status Pages
-                </Link>
-
-                <div className="space-y-1">
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                        <LayoutDashboard className="h-4 w-4" /> Monitors
-                    </Button>
-                    <Link href={`/status-pages/${id}/edit/appearance`}>
-                        <Button variant="ghost" className="w-full justify-start gap-3 bg-muted/50 text-foreground">
-                            <Palette className="h-4 w-4" /> Appearance
-                        </Button>
-                    </Link>
-                    <Link href={`/status-pages/${id}/edit`}>
-                        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                            <Settings className="h-4 w-4" /> Global Settings
-                        </Button>
-                    </Link>
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-                        <Megaphone className="h-4 w-4" /> Announcements
-                    </Button>
-                </div>
-            </div>
+            </div >
 
             {/* Fixed Bottom Bar */}
             <div className="fixed bottom-0 left-0 lg:right-64 right-0 lg:left-0 p-4 bg-card border-t border-border flex justify-end z-10 w-full lg:w-[calc(100%-16rem)]">
@@ -387,6 +360,6 @@ export default function StatusPageAppearance() {
                     {saving ? "Saving..." : "Save changes"}
                 </Button>
             </div>
-        </div>
+        </>
     )
 }
