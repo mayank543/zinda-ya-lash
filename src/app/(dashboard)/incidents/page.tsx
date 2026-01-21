@@ -169,6 +169,24 @@ export default function IncidentsPage() {
         fetchIncidents()
     }, [])
 
+    const handleResolve = async (id: number) => {
+        try {
+            const res = await fetch(`/api/incidents/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "Resolved" })
+            })
+            if (res.ok) {
+                const updated = await res.json()
+                setIncidents(prev => prev.map(inc =>
+                    inc.id === id ? { ...inc, status: "Resolved", resolved_at: updated.resolved_at, duration: updated.duration } : inc
+                ))
+            }
+        } catch (e) {
+            console.error("Failed to resolve incident")
+        }
+    }
+
     return (
         <div className="flex flex-col gap-4 p-4 md:p-8 max-w-[1600px] mx-auto w-full">
             {/* Page Header */}
@@ -264,10 +282,10 @@ export default function IncidentsPage() {
                                 >
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            {incident.status === "Resolved" ? (
+                                            {incident.status?.toLowerCase() === "resolved" ? (
                                                 <>
                                                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                                    <span className="text-green-500 font-medium text-xs">{incident.status}</span>
+                                                    <span className="text-green-500 font-medium text-xs">Resolved</span>
                                                 </>
                                             ) : (
                                                 <>

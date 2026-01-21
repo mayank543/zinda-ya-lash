@@ -4,61 +4,105 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
     request: Request,
-    { params }: { params: Promise<{ id: string }> }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
+    const { id } = params
     const supabase = await createClient()
-    const { id } = await params
 
-    const { data, error } = await supabase
+    const { data: incident, error } = await supabase
         .from('incidents')
         .select(`
             *,
             monitors (
-                id,
                 name,
-                url,
-                type
+                url
             )
         `)
         .eq('id', id)
         .single()
 
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error || !incident) {
+        return NextResponse.json({ error: 'Incident not found' }, { status: 404 })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(incident)
 }
-
 export async function PATCH(
     request: Request,
-    { params }: { params: Promise<{ id: string }> }
+    props: { params: Promise<{ id: string }> }
 ) {
-    const supabase = await createClient()
-    const { id } = await params
+    const params = await props.params;
     const body = await request.json()
+    const { id } = params
+    const supabase = await createClient()
 
-    // Validate status
-    if (body.status && !['ongoing', 'resolved', 'acknowledged'].includes(body.status)) {
-        return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    // 1. Fetch current incident to calculate duration
+    const { data: incident, error: fetchError } = await supabase
+        .from('incidents')
+        .select('started_at')
+        .eq('id', id)
+        .single()
+
+    if (fetchError || !incident) {
+        return NextResponse.json({ error: 'Incident not found' }, { status: 404 })
     }
 
+    // 2. Prepare updates
     const updates: any = {}
-    if (body.status) updates.status = body.status
-    if (body.root_cause) updates.root_cause = body.root_cause
-    if (body.status === 'resolved') {
-        updates.resolved_at = new Date().toISOString()
+    const newStatus = body.status
+
+    if (newStatus && newStatus.toLowerCase() === 'resolved') {
+        const resolvedAt = new Date()
+        // Ensure started_at is valid
+        const startedAt = incident.started_at ? new Date(incident.started_at) : new Date()
+
+        // Calculate duration
+        const diffMs = resolvedAt.getTime() - startedAt.getTime()
+        const diffMins = Math.round(diffMs / 60000)
+        const hrs = Math.floor(diffMins / 60)
+        const mins = diffMins % 60
+        const durationStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`
+
+        updates.status = 'Resolved' // Standardize to Capitalized for UI consistency
+        updates.resolved_at = resolvedAt.toISOString()
+        updates.duration = durationStr
+    } else if (newStatus) {
+        updates.status = newStatus
     }
 
-    const { data, error } = await supabase
+    // 3. Update DB
+    const { data: updated, error } = await supabase
         .from('incidents')
         .update(updates)
         .eq('id', id)
         .select()
+        .single()
+
+    if (error) {
+        console.error("Error updating incident:", error)
+        return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(updated)
+}
+
+export async function DELETE(
+    request: Request,
+    props: { params: Promise<{ id: string }> }
+) {
+    const params = await props.params;
+    const { id } = params
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('incidents')
+        .delete()
+        .eq('id', id)
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data[0])
+    return NextResponse.json({ success: true })
 }

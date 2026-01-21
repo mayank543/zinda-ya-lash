@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkMonitor } from '@/lib/monitor-utils'
 
 export async function GET(
     request: Request,
@@ -60,6 +61,18 @@ export async function PATCH(
             const { error: linkError } = await supabase.from('monitor_notifications').insert(rows)
             if (linkError) console.error("Failed to link notifications", linkError)
         }
+    }
+
+    // SPECIAL: If Resuming (status -> 'up'), run an immediate check!
+    // We don't want to show "up" if it's actually down.
+    if (monitorUpdates.status === 'up') {
+        const monitorToCheck = data[0]
+        // Run check asynchronously (or await if we want to return real status)
+        // Let's await it so UI gets real status immediately
+        const result = await checkMonitor(monitorToCheck)
+
+        // Return the updated updated monitor (checkMonitor updates DB)
+        return NextResponse.json({ ...monitorToCheck, status: result.status, last_checked: new Date().toISOString() })
     }
 
     return NextResponse.json(data[0])
